@@ -70,9 +70,11 @@ class Ball(object):
         glEnable(GL_LINE_SMOOTH)
         drawCoord = self.getDrawCoord(self.coord)
         drawRadius = self.radius * self.maze.cell_size
-        self.maze.set_color(0, 0, 0, 0.1)
+        self.maze.set_color(0.5, 0.5, 0.5, 0.3)
         drawCircle(drawCoord, self.maze.cell_size * self.blockRadius)
-        self.maze.set_color(0, 0, 0, 0.1)
+        self.maze.set_color(0, 0, 1, 0.1)
+        drawCircle(drawCoord, self.maze.cell_size * self.blockRadius, linewidth=3)
+        self.maze.set_color(0.5, 0.5, 0.5, 0.3)
         drawCircle(drawCoord, self.maze.cell_size * 2, linewidth=3)
         self.maze.set_color(0, 0, 1)
         drawCircle(drawCoord, drawRadius)
@@ -233,10 +235,11 @@ class Maze(Game):
         elif self.matrix[x, y] < 0:
             return 1, 1, 1
         else:
-            m = self.matrix[x, y] / self.matrix.max()
-            d = self.dist[x, y] / self.dist.max()
-            b = self.bdist[x, y] / self.bdist.max()
-            return 1 - m, 1 - d, 1 - b
+            #return 0, 0, 0
+            m = 1 - (self.matrix[x, y] / self.matrix.max())
+            d = 1 - (self.dist[x, y] / self.dist.max())
+            b = 1 - (self.bdist[x, y] / self.bdist.max())
+            return numpy.array((1-m, d, max(m, b))) ** 8
 
     def draw(self):
         self.set_color(1, 1, 1)
@@ -255,13 +258,11 @@ class Maze(Game):
         for ball in self.balls:
             ball.draw()
 
-        startCoord = (numpy.array(self.start_point) + (1.5, 0.5)) * (
-                self.cell_width, self.cell_height
-            )
+        startCoord = (self.window_width, self.window_height)
         self.set_color(0, 0, 1, 0.1)
-        drawCircle(startCoord, self.cell_size * 2)
+        drawCircle(startCoord, self.cell_size * 3)
         self.set_color(0, 0, 1, 0.3)
-        drawCircle(startCoord, self.cell_size * 2, linewidth=2)
+        drawCircle(startCoord, self.cell_size * 3, linewidth=2)
 
     def getTile(self, x, y):
         return x * self.width / self.window_width, y * self.height / self.window_height
@@ -271,21 +272,17 @@ class Maze(Game):
         tileCoord = self.getTile(x, y)
         for ball in self.balls:
             if ball.hittest(tileCoord):
-                self.touches[touch.id] = dict(
-                        role='ball',
-                        ball=ball,
-                        initial=tileCoord - ball.coord,
-                    )
+                self.touches[touch.id] = dict(role='ball', ball=ball)
                 ball.touched = True
+                self.touchMove(touch)
                 return
-        if sum((numpy.array(tileCoord) - self.start_cranny) ** 2) < 2 ** 2:
+        if sum((numpy.array(tileCoord) - (self.width, self.height)) ** 2) < 3 ** 2:
             ball = Ball(self, self.start_cranny)
             self.balls.append(ball)
-            self.touches[touch.id] = dict(
-                    role='ball',
-                    ball=ball,
-                    initial=tileCoord - ball.coord,
-                )
+            self.touches[touch.id] = dict(role='ball', ball=ball)
+            ball.touched = True
+            self.touchMove(touch)
+            return
         try:
             build = self.matrix[tileCoord] > 0
         except IndexError:
@@ -313,7 +310,7 @@ class Maze(Game):
                 self.setWall(tileCoord, d['build'])
         if d['role'] == 'ball':
             ball = d['ball']
-            ball.target = tileCoord - d['initial']
+            ball.target = tileCoord
 
     def touchUp(self, touch):
         try:
@@ -342,11 +339,10 @@ class Maze(Game):
         c_w, c_h = (w - r), r - 2 * b
 
         if self.balls:
-            completeness = 1 - (self.bdist[1, 1] / (
-                    self.dist[self.start_point] + 1
-                ))
-            print completeness
-            if completeness >= 0:
+            completeness = 1 - ((self.bdist[1, 1] - 1) / self.dist[self.start_point])
+            if completeness > 1:
+                pass
+            elif completeness >= 0:
                 set_color(0, 0, 0.75, .5)
                 drawRectangle(pos=(c_x, c_y), size=(c_w * min(1, completeness), c_h))
             else:
