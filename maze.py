@@ -70,12 +70,12 @@ class Ball(object):
         glEnable(GL_LINE_SMOOTH)
         drawCoord = self.getDrawCoord(self.coord)
         drawRadius = self.radius * self.maze.cell_size
-        self.maze.set_color(0, 0, 1)
-        drawCircle(drawCoord, drawRadius)
         self.maze.set_color(0, 0, 0, 0.1)
         drawCircle(drawCoord, self.maze.cell_size * self.blockRadius)
         self.maze.set_color(0, 0, 0, 0.1)
         drawCircle(drawCoord, self.maze.cell_size * 2, linewidth=3)
+        self.maze.set_color(0, 0, 1)
+        drawCircle(drawCoord, drawRadius)
 
     @property
     def touched(self):
@@ -219,6 +219,20 @@ class Maze(Game):
         else:
             return False
 
+    def tileColor(self, x, y):
+        m = 0
+        if self.matrix[x, y] == -4:
+            return self.tileColor(x - 1, y)
+        elif self.matrix[x, y] == -3:
+            return self.tileColor(x + 1, y)
+        elif self.matrix[x, y] < 0:
+            return 1, 1, 1
+        else:
+            m = self.matrix[x, y] / self.matrix.max()
+            d = self.dist[x, y] / self.dist.max()
+            b = self.bdist[x, y] / self.bdist.max()
+            return 1 - m, 1 - d, 1 - b
+
     def draw(self):
         self.set_color(1, 1, 1)
         for x in range(self.width):
@@ -230,23 +244,19 @@ class Maze(Game):
             #pymt.drawLine((0, y_coord - .1, self.window_width, y_coord + .1))
             for x in range(self.width):
                 x_coord = x * self.cell_width
-                m = 0
-                if self.matrix[x, y] == -4:
-                    self.set_color(1, 0, 0)
-                elif self.matrix[x, y] == -3:
-                    self.set_color(0, 1, 0)
-                elif self.matrix[x, y] < 0:
-                    m = 1
-                    self.set_color(1, 1, 1)
-                else:
-                    m = self.matrix[x, y] / self.matrix.max()
-                    d = self.dist[x, y] / self.dist.max()
-                    b = self.bdist[x, y] / self.bdist.max()
-                    self.set_color(1 - m, 1 - d, 1 - b)
+                self.set_color(*self.tileColor(x, y))
                 drawRectangle((x_coord, y_coord), (self.cell_width, self.cell_height))
-                self.set_color(1, 1, 1)
+
         for ball in self.balls:
             ball.draw()
+
+        startCoord = (numpy.array(self.start_point) + (1.5, 0.5)) * (
+                self.cell_width, self.cell_height
+            )
+        self.set_color(0, 0, 1, 0.1)
+        drawCircle(startCoord, self.cell_size * 2)
+        self.set_color(0, 0, 1, 0.3)
+        drawCircle(startCoord, self.cell_size * 2, linewidth=2)
 
     def getTile(self, x, y):
         return x * self.width / self.window_width, y * self.height / self.window_height
@@ -313,15 +323,19 @@ class Maze(Game):
         b = border = 4
         set_color(0, 0, 0, 1)
         complexity = self.matrix.max()
-        drawLabel("The maze", pos=(0, r / 2), font_size=10, center=True, color=(0, 0, 0))
+        #drawLabel("The maze", pos=(0, r / 2), font_size=10, center=True, color=(0, 0, 0))
 
         c_x, c_y = -(w - r) / 2, b
         c_w, c_h = (w - r), r - 2 * b
 
-        #set_color(0, 0.75, 0.25, .75)
-        #drawRectangle(pos=(c_x, c_y), size=(c_w * min(1, self.completeness), c_h))
-        #set_color(0, 0, 0, 1)
-        #drawRectangle(pos=(c_x, c_y), size=(c_w + 1, c_h), style=GL_LINE_LOOP)
+        completeness = 1 - (self.bdist[1, 1] / (
+                self.bdist[1, 1] + self.bdist[self.start_point] - 1
+            ))
+        completeness = int(completeness * 16) / 16
+        set_color(0, 0, 0.75, .5)
+        drawRectangle(pos=(c_x, c_y), size=(c_w * min(1, completeness), c_h))
+        set_color(0, 0, 0, 1)
+        drawRectangle(pos=(c_x, c_y), size=(c_w + 1, c_h), style=GL_LINE_LOOP)
 
     def isWall(self, tileCoord):
         try:
