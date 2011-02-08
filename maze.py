@@ -329,11 +329,21 @@ class Maze(Game):
         c_w, c_h = (w - r), r - 2 * b
 
         completeness = 1 - (self.bdist[1, 1] / (
-                self.bdist[1, 1] + self.bdist[self.start_point] - 1
+                self.dist[self.start_point] + 1
             ))
-        completeness = int(completeness * 16) / 16
-        set_color(0, 0, 0.75, .5)
-        drawRectangle(pos=(c_x, c_y), size=(c_w * min(1, completeness), c_h))
+        print completeness
+        if completeness >= 0:
+            set_color(0, 0, 0.75, .5)
+            drawRectangle(pos=(c_x, c_y), size=(c_w * min(1, completeness), c_h))
+        else:
+            set_color(0.75, 0, 0, .5)
+            if completeness < -1:
+                drawRectangle(pos=(c_x, c_y), size=(c_w, c_h))
+                completeness += 1
+                completeness /= 2
+                set_color(0, 0, 0)
+            w = c_w * max(0, abs(completeness))
+            drawRectangle(pos=(c_x + c_w - w + 1, c_y), size=(w, c_h))
         set_color(0, 0, 0, 1)
         drawRectangle(pos=(c_x, c_y), size=(c_w + 1, c_h), style=GL_LINE_LOOP)
 
