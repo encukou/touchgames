@@ -161,10 +161,11 @@ class Maze(Game):
         self.matrix[0, 1] = -3
         self.matrix[self.width - 1, self.height - 2] = -4
         self.start_point = self.width - 2, self.height - 2
+        self.start_cranny = self.width - 1, self.height - 2
         self.recompute_set = set()#HintQueue(self)
         self.recompute_set.add(self.start_point)
         self.all_indices = []
-        self.balls = [Ball(self, self.start_point + numpy.array((1, 0)))]
+        self.balls = []
         self.touches = {}
 
         self.bdist = self.dist = self.matrix
@@ -180,7 +181,7 @@ class Maze(Game):
         for i in range(11 * (self.width + self.height)):
             m = numpy.select([numpy.logical_and(corridors, m < infinity)], [m], infinity)
             m[self.start_point + (0,)] = m[(1, 1, 1)] = 1
-            m[self.start_point[0] + 1, self.start_point[1], 0] = 1
+            m[self.start_cranny + (0,)] = 1
             for ball in self.balls:
                 m[int(ball.coord[0]), int(ball.coord[1]), 2] = 1
             m = numpy.minimum(
@@ -188,7 +189,11 @@ class Maze(Game):
                     numpy.minimum(numpy.roll(m, 1, 1), numpy.roll(m, -1, 1)),
                 ) + 1
             m = numpy.select([corridors], [m], 0)
-            if m[:, :, :3].max() < infinity:
+            if self.balls:
+                theMax = m.max()
+            else:
+                theMax = m[:, :, :2].max()
+            if theMax < infinity:
                 break
         else:
             print 'maxed out!'
@@ -273,6 +278,14 @@ class Maze(Game):
                     )
                 ball.touched = True
                 return
+        if sum((numpy.array(tileCoord) - self.start_cranny) ** 2) < 2 ** 2:
+            ball = Ball(self, self.start_cranny)
+            self.balls.append(ball)
+            self.touches[touch.id] = dict(
+                    role='ball',
+                    ball=ball,
+                    initial=tileCoord - ball.coord,
+                )
         try:
             build = self.matrix[tileCoord] > 0
         except IndexError:
@@ -328,24 +341,27 @@ class Maze(Game):
         c_x, c_y = -(w - r) / 2, b
         c_w, c_h = (w - r), r - 2 * b
 
-        completeness = 1 - (self.bdist[1, 1] / (
-                self.dist[self.start_point] + 1
-            ))
-        print completeness
-        if completeness >= 0:
-            set_color(0, 0, 0.75, .5)
-            drawRectangle(pos=(c_x, c_y), size=(c_w * min(1, completeness), c_h))
+        if self.balls:
+            completeness = 1 - (self.bdist[1, 1] / (
+                    self.dist[self.start_point] + 1
+                ))
+            print completeness
+            if completeness >= 0:
+                set_color(0, 0, 0.75, .5)
+                drawRectangle(pos=(c_x, c_y), size=(c_w * min(1, completeness), c_h))
+            else:
+                set_color(0.75, 0, 0, .5)
+                if completeness < -1:
+                    drawRectangle(pos=(c_x, c_y), size=(c_w, c_h))
+                    completeness += 1
+                    completeness /= 2
+                    set_color(0, 0, 0)
+                w = c_w * max(0, abs(completeness))
+                drawRectangle(pos=(c_x + c_w - w + 1, c_y), size=(w, c_h))
+            set_color(0, 0, 0, 1)
+            drawRectangle(pos=(c_x, c_y), size=(c_w + 1, c_h), style=GL_LINE_LOOP)
         else:
-            set_color(0.75, 0, 0, .5)
-            if completeness < -1:
-                drawRectangle(pos=(c_x, c_y), size=(c_w, c_h))
-                completeness += 1
-                completeness /= 2
-                set_color(0, 0, 0)
-            w = c_w * max(0, abs(completeness))
-            drawRectangle(pos=(c_x + c_w - w + 1, c_y), size=(w, c_h))
-        set_color(0, 0, 0, 1)
-        drawRectangle(pos=(c_x, c_y), size=(c_w + 1, c_h), style=GL_LINE_LOOP)
+            drawLabel("Start at blue corner!", pos=(0, r / 2), font_size=10, center=True, color=(0, 0, 0))
 
     def isWall(self, tileCoord):
         try:
