@@ -44,7 +44,7 @@ import heapq
 import numpy
 
 from pymt import *
-from OpenGL.GL import glColor3f, glColor4f, GL_LINE_LOOP
+from OpenGL.GL import *
 
 import touchgames
 from touchgames.game import Game
@@ -57,6 +57,8 @@ class Ball(object):
         self.maze = maze
         self.coord = numpy.array(coord) + 0.5
         self.target = self.coord
+        self._touched = False
+        self.blockRadius = 2
 
     def getDrawCoord(self, coord):
         return coord * (
@@ -65,11 +67,33 @@ class Ball(object):
             )
 
     def draw(self):
+        glEnable(GL_LINE_SMOOTH)
         drawCoord = self.getDrawCoord(self.coord)
         drawRadius = self.radius * self.maze.cell_size
         self.maze.set_color(0, 0, 1)
         drawCircle(drawCoord, drawRadius)
         self.maze.set_color(0, 0, 0, 0.1)
+        drawCircle(drawCoord, self.maze.cell_size * self.blockRadius)
+        self.maze.set_color(0, 0, 0, 0.1)
+        drawCircle(drawCoord, self.maze.cell_size * 2, linewidth=3)
+
+    @property
+    def touched(self):
+        return self._touched
+
+    @touched.setter
+    def touched(self, touched):
+        self._touched = touched
+        if touched:
+            self.blockRadius = 7
+        else:
+            self.blockRadius = 2
+
+    def blocks(self, coord):
+        if self.touched:
+            return sum((self.coord - coord + 0.5) ** 2) < self.blockRadius ** 2
+        else:
+            return sum((self.coord - coord + 0.5) ** 2) < self.blockRadius ** 2
 
     def hittest(self, tileCoord):
         return sum((tileCoord - self.coord) ** 2) <= (
@@ -118,6 +142,7 @@ class Ball(object):
         return length
 
 class Maze(Game):
+    solve_timer = 0
     def start(self, width, height):
         cell_size = 20
         self.window_width = width
@@ -139,9 +164,11 @@ class Maze(Game):
         self.recompute_set = set()#HintQueue(self)
         self.recompute_set.add(self.start_point)
         self.all_indices = []
-        self.setWalls(self.matrix)
-        self.touches = {}
         self.balls = [Ball(self, self.start_point + numpy.array((1, 0)))]
+        self.touches = {}
+
+        self.bdist = self.dist = self.matrix
+        self.setWalls(self.matrix)
 
     def setWalls(self, matrix):
         """Set walls and solve the maze. No-op if maze is unsolvable
@@ -150,31 +177,36 @@ class Maze(Game):
         m = numpy.zeros(matrix.shape + (3,), dtype=numpy.int32) + infinity
         mat = numpy.dstack((matrix, matrix, matrix))
         corridors = mat >= 0
-        print '{'
-        for i in range(10 * (self.width + self.height)):
-            m[self.start_point + (0,)] = m[(1, 1, 1)] = 1
+        for i in range(11 * (self.width + self.height)):
             m = numpy.select([numpy.logical_and(corridors, m < infinity)], [m], infinity)
+            m[self.start_point + (0,)] = m[(1, 1, 1)] = 1
+            m[self.start_point[0] + 1, self.start_point[1], 0] = 1
+            for ball in self.balls:
+                m[int(ball.coord[0]), int(ball.coord[1]), 2] = 1
             m = numpy.minimum(
                     numpy.minimum(numpy.roll(m, 1, 0), numpy.roll(m, -1, 0)),
                     numpy.minimum(numpy.roll(m, 1, 1), numpy.roll(m, -1, 1)),
                 ) + 1
             m = numpy.select([corridors], [m], 0)
-            if m[:, :, :2].max() < infinity:
+            if m[:, :, :3].max() < infinity:
                 break
         else:
-            print '} maxed out!'
+            print 'maxed out!'
             return False
         m[self.start_point + (0,)] = m[(1, 1, 1)] = 1
         self.bdist = m[:, :, 2]
         self.dist = m[:, :, 1]
         m = m[:, :, 0]
         self.matrix = numpy.select([matrix < 0, m < infinity], [matrix, m], 0)
-        print '}'
+        self.solve_timer = 0
         return True
 
     def update(self, dt):
         for ball in self.balls:
             ball.update(dt)
+        self.solve_timer += dt
+        if self.solve_timer > 0.1:
+            self.setWalls(self.matrix)
 
     def setWall(self, coord, create):
         m = self.matrix.copy()
@@ -229,14 +261,15 @@ class Maze(Game):
                         ball=ball,
                         initial=tileCoord - ball.coord,
                     )
+                ball.touched = True
                 return
         try:
             build = self.matrix[tileCoord] > 0
         except IndexError:
             return
         else:
-            self.setWall(tileCoord, build)
-        self.touches[touch.id] = dict(role='wall', build=build)
+            self.touches[touch.id] = dict(role='wall', build=build)
+            self.touchMove(touch)
 
     def touchMove(self, touch):
         x, y = start = touch.x, touch.y
@@ -246,6 +279,9 @@ class Maze(Game):
         except KeyError:
             return
         if d['role'] == 'wall':
+            for ball in self.balls:
+                if ball.blocks(numpy.array(tileCoord) + 0.5):
+                    return
             try:
                 build = self.matrix[tileCoord] > 0
             except IndexError:
@@ -265,6 +301,7 @@ class Maze(Game):
         if d['role'] == 'ball':
             ball = d['ball']
             ball.target = ball.coord
+            ball.touched = False
 
     def set_color(self, *rgb):
         if len(rgb) == 3:
