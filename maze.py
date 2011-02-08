@@ -58,16 +58,22 @@ class Ball(object):
         self.coord = numpy.array(coord) + 0.5
         self.target = self.coord
 
+    def getDrawCoord(self, coord):
+        return coord * (
+                self.maze.cell_width,
+                self.maze.cell_height,
+            )
+
     def draw(self):
-        drawCoord = (self.coord) * (
-                        self.maze.cell_width,
-                        self.maze.cell_height,
-                    )
+        drawCoord = self.getDrawCoord(self.coord)
         drawRadius = self.radius * self.maze.cell_size
         self.maze.set_color(0, 0, 1)
         drawCircle(drawCoord, drawRadius)
         self.maze.set_color(0, 0, 0, 0.1)
         drawCircle(drawCoord, drawRadius * 5, linewidth=3)
+        drawCircle(self.getDrawCoord(self.coord.round()), drawRadius, linewidth=2)
+        drawCircle(self.getDrawCoord(self.coord.round()), drawRadius, linewidth=2)
+        drawCircle(self.getDrawCoord(2*self.coord.round() - self.coord), drawRadius, linewidth=1)
 
     def hittest(self, tileCoord):
         return sum((tileCoord - self.coord) ** 2) <= (
@@ -76,17 +82,18 @@ class Ball(object):
 
     def update(self, dt):
         distance_covered = 0
-        while distance_covered < dt * 5:
-            if abs(sum(self.target - self.coord)) < 0.1:
+        while distance_covered < dt * 10:
+            if abs(sum(self.target - self.coord)) < 0.01:
                 break
             distance_covered += self.dragBy(self.target - self.coord)
 
     def dragBy(self, delta):
         # returns distance covered
         length = numpy.sqrt(sum(delta ** 2))
-        max_len = self.radius
-        if length > max_len ** 2:
+        max_len = self.radius / 2
+        if length > max_len:
             delta = delta / length * max_len
+            length = max_len
         radius = self.radius
         for i in (0, 1):
             # Check the up/down & left/right points of the circle
@@ -96,8 +103,26 @@ class Ball(object):
                 delta[i] = int(self.coord[i] + delta[i] + 1) - radius - self.coord[i]
             if self.maze.isWall(self.coord + delta - pt):
                 delta[i] = int(self.coord[i] + delta[i]) + radius - self.coord[i]
-        sign = numpy.sign(delta)
-        self.coord += delta
+        coord = self.coord + delta
+        # Get the closest grid intersection
+        corner = coord.round()
+        # Get a point in the tile behind this corner
+        corner_tile = 2 * corner - coord
+        # Check that
+        if self.maze.isWall(corner_tile):
+            vector_to_corner = corner - coord
+            if sum(vector_to_corner ** 2) < self.radius ** 2:
+                print 'in wall'
+                # Part of the ball is inside a corner tile; push it back
+                distance_to_corner = numpy.sqrt(sum(vector_to_corner ** 2))
+                direction_to_corner = vector_to_corner / distance_to_corner
+                coord -= direction_to_corner * (self.radius - distance_to_corner)
+                length += distance_to_corner
+            else:
+                print 'not in wall'
+        else:
+            print 'not close to corner'
+        self.coord = coord
         return length
 
 class Maze(Game):
@@ -124,7 +149,7 @@ class Maze(Game):
         self.all_indices = []
         self.setWalls(self.matrix)
         self.touches = {}
-        self.balls = [Ball(self, self.start_point)]
+        self.balls = [Ball(self, self.start_point + numpy.array((1, 0)))]
 
     def setWalls(self, matrix):
         """Set walls and solve the maze. No-op if maze is unsolvable
@@ -271,7 +296,7 @@ class Maze(Game):
 
     def isWall(self, tileCoord):
         try:
-            return self.matrix[int(tileCoord[0]), int(tileCoord[1])] < 0
+            return -2 <= self.matrix[int(tileCoord[0]), int(tileCoord[1])] < 0
         except IndexError:
             return True
 
