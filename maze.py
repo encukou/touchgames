@@ -56,6 +56,7 @@ class Ball(object):
     def __init__(self, maze, coord):
         self.maze = maze
         self.coord = numpy.array(coord) + 0.5
+        self.target = self.coord
 
     def draw(self):
         drawCoord = (self.coord) * (
@@ -73,9 +74,31 @@ class Ball(object):
                 (self.radius * 5) ** 2
             )
 
-    def dragTo(self, newCoord):
-        print self.maze.matrix[int(newCoord[0]), int(newCoord[1])]
-        self.coord = newCoord
+    def update(self, dt):
+        distance_covered = 0
+        while distance_covered < dt * 5:
+            if abs(sum(self.target - self.coord)) < 0.1:
+                break
+            distance_covered += self.dragBy(self.target - self.coord)
+
+    def dragBy(self, delta):
+        # returns distance covered
+        length = numpy.sqrt(sum(delta ** 2))
+        max_len = self.radius
+        if length > max_len ** 2:
+            delta = delta / length * max_len
+        radius = self.radius
+        for i in (0, 1):
+            # Check the up/down & left/right points of the circle
+            pt = [0, 0]
+            pt[i] = radius
+            if self.maze.isWall(self.coord + delta + pt):
+                delta[i] = int(self.coord[i] + delta[i] + 1) - radius - self.coord[i]
+            if self.maze.isWall(self.coord + delta - pt):
+                delta[i] = int(self.coord[i] + delta[i]) + radius - self.coord[i]
+        sign = numpy.sign(delta)
+        self.coord += delta
+        return length
 
 class Maze(Game):
     def start(self, width, height):
@@ -133,7 +156,8 @@ class Maze(Game):
         return True
 
     def update(self, dt):
-        return
+        for ball in self.balls:
+            ball.update(dt)
 
     def setWall(self, coord, create):
         m = self.matrix.copy()
@@ -212,13 +236,18 @@ class Maze(Game):
             else:
                 self.setWall(tileCoord, d['build'])
         if d['role'] == 'ball':
-            d['ball'].dragTo(tileCoord - d['initial'])
+            ball = d['ball']
+            ball.target = tileCoord - d['initial']
 
     def touchUp(self, touch):
         try:
+            d = self.touches[touch.id]
             del self.touches[touch.id]
         except KeyError:
             return
+        if d['role'] == 'ball':
+            ball = d['ball']
+            ball.target = ball.coord
 
     def set_color(self, *rgb):
         if len(rgb) == 3:
@@ -239,6 +268,12 @@ class Maze(Game):
         #drawRectangle(pos=(c_x, c_y), size=(c_w * min(1, self.completeness), c_h))
         #set_color(0, 0, 0, 1)
         #drawRectangle(pos=(c_x, c_y), size=(c_w + 1, c_h), style=GL_LINE_LOOP)
+
+    def isWall(self, tileCoord):
+        try:
+            return self.matrix[int(tileCoord[0]), int(tileCoord[1])] < 0
+        except IndexError:
+            return True
 
 registerPyMTPlugin(Maze, globals())
 
