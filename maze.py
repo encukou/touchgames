@@ -44,24 +44,38 @@ import heapq
 import numpy
 
 from pymt import *
-from OpenGL.GL import glColor3f, GL_LINE_LOOP
+from OpenGL.GL import glColor3f, glColor4f, GL_LINE_LOOP
 
 import touchgames
 from touchgames.game import Game
 from touchgames.gamecontroller import registerPyMTPlugin
 
-def neighbor_indices(x, y):
-    return ((x, y-1), (x-1, y), (x, y+1), (x+1, y))
+class Ball(object):
+    radius = 0.4
 
-def diag_indices(x, y):
-    return ((x-1, y-1), (x-1, y+1), (x+1, y+1), (x+1, y-1))
+    def __init__(self, maze, coord):
+        self.maze = maze
+        self.coord = numpy.array(coord) + 0.5
 
-def neighbor_indices8(x, y):
-    return (
-            (x, y-1), (x-1, y), (x, y+1), (x+1, y),
-            (x-1, y-1), (x-1, y+1), (x+1, y+1), (x+1, y-1),
-        )
+    def draw(self):
+        drawCoord = (self.coord) * (
+                        self.maze.cell_width,
+                        self.maze.cell_height,
+                    )
+        drawRadius = self.radius * self.maze.cell_size
+        self.maze.set_color(0, 0, 1)
+        drawCircle(drawCoord, drawRadius)
+        self.maze.set_color(0, 0, 0, 0.1)
+        drawCircle(drawCoord, drawRadius * 5, linewidth=3)
 
+    def hittest(self, tileCoord):
+        return sum((tileCoord - self.coord) ** 2) <= (
+                (self.radius * 5) ** 2
+            )
+
+    def dragTo(self, newCoord):
+        print self.maze.matrix[int(newCoord[0]), int(newCoord[1])]
+        self.coord = newCoord
 
 class Maze(Game):
     def start(self, width, height):
@@ -74,6 +88,7 @@ class Maze(Game):
         self.width, self.height = self.matrix.shape
         self.cell_width = width / self.width
         self.cell_height = height / self.height
+        self.cell_size = (self.cell_width + self.cell_height) / 2
         for x in range(self.width):
             self.matrix[x, 0] = self.matrix[x, self.height - 1] = -2
         for y in range(self.height):
@@ -86,6 +101,7 @@ class Maze(Game):
         self.all_indices = []
         self.setWalls(self.matrix)
         self.touches = {}
+        self.balls = [Ball(self, self.start_point)]
 
     def setWalls(self, matrix):
         """Set walls and solve the maze. No-op if maze is unsolvable
@@ -156,36 +172,47 @@ class Maze(Game):
                     self.set_color(1 - m, 1 - d, 1 - b)
                 drawRectangle((x_coord, y_coord), (self.cell_width, self.cell_height))
                 self.set_color(1, 1, 1)
+        for ball in self.balls:
+            ball.draw()
 
     def getTile(self, x, y):
-        print x, y
         return x * self.width / self.window_width, y * self.height / self.window_height
 
     def touchDown(self, touch):
         x, y = start = touch.x, touch.y
-        tile = self.getTile(x, y)
+        tileCoord = self.getTile(x, y)
+        for ball in self.balls:
+            if ball.hittest(tileCoord):
+                self.touches[touch.id] = dict(
+                        role='ball',
+                        ball=ball,
+                        initial=tileCoord - ball.coord,
+                    )
+                return
         try:
-            build = self.matrix[tile] > 0
+            build = self.matrix[tileCoord] > 0
         except IndexError:
             return
         else:
-            self.setWall(tile, build)
+            self.setWall(tileCoord, build)
         self.touches[touch.id] = dict(role='wall', build=build)
 
     def touchMove(self, touch):
         x, y = start = touch.x, touch.y
-        tile = self.getTile(x, y)
+        tileCoord = self.getTile(x, y)
         try:
             d = self.touches[touch.id]
         except KeyError:
             return
         if d['role'] == 'wall':
             try:
-                build = self.matrix[tile] > 0
+                build = self.matrix[tileCoord] > 0
             except IndexError:
                 return
             else:
-                self.setWall(tile, d['build'])
+                self.setWall(tileCoord, d['build'])
+        if d['role'] == 'ball':
+            d['ball'].dragTo(tileCoord - d['initial'])
 
     def touchUp(self, touch):
         try:
@@ -194,7 +221,10 @@ class Maze(Game):
             return
 
     def set_color(self, *rgb):
-        glColor3f(*self.color(*rgb))
+        if len(rgb) == 3:
+            glColor3f(*self.color(*rgb))
+        else:
+            glColor4f(*self.color(*rgb))
 
     def drawStateContents(self, w, r, *args, **kwargs):
         b = border = 4
