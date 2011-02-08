@@ -70,10 +70,6 @@ class Ball(object):
         self.maze.set_color(0, 0, 1)
         drawCircle(drawCoord, drawRadius)
         self.maze.set_color(0, 0, 0, 0.1)
-        drawCircle(drawCoord, drawRadius * 5, linewidth=3)
-        drawCircle(self.getDrawCoord(self.coord.round()), drawRadius, linewidth=2)
-        drawCircle(self.getDrawCoord(self.coord.round()), drawRadius, linewidth=2)
-        drawCircle(self.getDrawCoord(2*self.coord.round() - self.coord), drawRadius, linewidth=1)
 
     def hittest(self, tileCoord):
         return sum((tileCoord - self.coord) ** 2) <= (
@@ -112,16 +108,12 @@ class Ball(object):
         if self.maze.isWall(corner_tile):
             vector_to_corner = corner - coord
             if sum(vector_to_corner ** 2) < self.radius ** 2:
-                print 'in wall'
                 # Part of the ball is inside a corner tile; push it back
                 distance_to_corner = numpy.sqrt(sum(vector_to_corner ** 2))
                 direction_to_corner = vector_to_corner / distance_to_corner
                 coord -= direction_to_corner * (self.radius - distance_to_corner)
+                # Penalize this operation
                 length += distance_to_corner
-            else:
-                print 'not in wall'
-        else:
-            print 'not close to corner'
         self.coord = coord
         return length
 
