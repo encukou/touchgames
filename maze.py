@@ -6,7 +6,11 @@ from __future__ import division
 import numpy as np
 from numpy.random import random_integers as rnd
 import matplotlib.pyplot as plt
- 
+
+from gillcup.animatedobject import AnimatedObject
+from gillcup.timer import Timer
+from gillcup import easing
+
 def maze(width=81, height=51, complexity=0.75, density=0.75):
     # http://en.wikipedia.org/wiki/Maze_generation_algorithm
     # Only odd shapes
@@ -50,10 +54,11 @@ import touchgames
 from touchgames.game import Game
 from touchgames.gamecontroller import registerPyMTPlugin
 
-class Ball(object):
+class Ball(AnimatedObject):
     radius = 0.4
 
     def __init__(self, maze, coord):
+        super(Ball, self).__init__(timer=maze.timer)
         self.maze = maze
         self.coord = numpy.array(coord) + 0.5
         self.target = self.coord
@@ -87,9 +92,9 @@ class Ball(object):
     def touched(self, touched):
         self._touched = touched
         if touched:
-            self.blockRadius = 7
+            self.animate('blockRadius', 7, time=0.5, easing=easing.quad.out)
         else:
-            self.blockRadius = 2
+            self.animate('blockRadius', 2, time=2, easing=easing.quart)
 
     def blocks(self, coord):
         if self.touched:
@@ -146,6 +151,8 @@ class Ball(object):
 class Maze(Game):
     solve_timer = 0
     def start(self, width, height):
+        self.timer = Timer()
+
         cell_size = 20
         self.window_width = width
         self.window_height = height
@@ -209,6 +216,7 @@ class Maze(Game):
         return True
 
     def update(self, dt):
+        self.timer.advance(dt)
         for ball in self.balls:
             ball.update(dt)
         self.solve_timer += dt
