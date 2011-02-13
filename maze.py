@@ -54,6 +54,15 @@ import touchgames
 from touchgames.game import Game
 from touchgames.gamecontroller import registerPyMTPlugin
 
+gdb = GestureDatabase()
+for build, gesture in (
+        (True, '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'),
+        (False, 'eNqllttqHEcURd/7R6SXiHO//IDzGtAHBMcWxsSJBkmG+O+zqzzqbkOSEkQIBma6dp86a5/L7efLtz9e7j49PL98fXrYfr5+Xmi7/Xjh7f7m+eXp8feH55vtItvtl4tut/944n4+tl1snHOcuzx+/vNlHItxLP/l2C/jqe1S41Tj1DccYNre0Z0Em4pIumoL5fZ8f/PX+JW3dz/RHbWyZVMkpUil6Pb82/v/fAnLvJNun17fkFTc5mRFZgWFT1d1fFsmJdyIIrxjLT4vzr6LXwMXs+a04kNcmqqKuJPYs8rX4jHF81Wc3ajS2zLcvfkkrmGqppZajltkrsVn8rlfxakCEXYZro30utmhbqRVotH4mQL5X6rLNJLwd/UBbqRdNTwqjCFzCh65IiSGiZAb3GsdvEymors8zrJ1tGoSqZ3FI0haQkIbzhrvXYlPpuK7OA6VWYwMmSR7nNSTI6sRvat76NoxMqFKHuoNM0AhBkO8x/9X7JOq9K4+wJVLwc2kqXISl4A/xYiMPLhrKa4Tqh5QTZtV0kzgdXD7wZBXs1SjZBtFuFSfTPVg6hQtrY6sRJfiakctpTZuFoCBJhFvSIxOqHpAdYORUxPSXv6DZbiaETSaA+rJON6gPqHqAdUL2YbX0cHg6D6l/UiJgm5yvUF9QtU+qcMXrt1ehhZ4LtXX/tKEemVBGEt5m1iNl/KjSSRMSq5gju4G56/VJ1Y7YQ2F9VwarhR423d1IRRBGvwo47W+zoxNqnai6sKS1Ggp3ZkRh3gHcMAqGYCasTakTah2gnqNGb7QMTtyF9dizA0UMHojAqA3iE+mdjC1rChCxMXoBNxH5OgxaL7oDLASUpTrQvVJ1E+FyoGxVIlPaoyHg6hzkjBAF5zYzusG5hOoH0AxkUsLZhlj2XOv05EwlC3DkoViM6RnLf59kTj1Xq5sVClzBDROgcM7yQqbq6CaZO1Enzz94MmY1lZXPyoPideUV2UKHCSGG+kbzOKTpx88MTKJUH8ocbTxqDpChzlhok4kpTAUfR16TKDB+7B2wZIRCWBowBx2hK5olZkH1jXQmEBjX5B47CnoitiAxNEk9dB2TJM2VBcyx3N1WmlPnrHvR4Mm+i1mg5OigupUn0zo8di/HPsfpspae/KMfT0SpzGNGp8eKYcyo5tHaZM7YpY1zJgwY9+NBJMM86Cxe5Hx7HpXbUZdQhcUUKSR64TkJJk7SbQUHQ0Ve2/BJnr0FDI0GthSQ3msY7xuhzlJ5k5SsVEVveaF8rTq4pWYS0g3aANr9Mz3+L+/eXn88vD0/s8PD9i70SqmJX7847GWX2P49fL0+PHrh5fxsG/vCtI06xVZb+x5w913fwPv4lI1'),
+    ):
+    g = gdb.str_to_gesture(gesture)
+    g.build = build
+    g = gdb.add_gesture(g)
+
 class Ball(AnimatedObject):
     radius = 0.4
 
@@ -72,7 +81,6 @@ class Ball(AnimatedObject):
             )
 
     def draw(self):
-        glEnable(GL_LINE_SMOOTH)
         drawCoord = self.getDrawCoord(self.coord)
         drawRadius = self.radius * self.maze.cell_size
         self.maze.set_color(0.5, 0.5, 0.5, 0.3)
@@ -94,7 +102,7 @@ class Ball(AnimatedObject):
         if touched:
             self.animate('blockRadius', 7, time=0.5, easing=easing.quad.out)
         else:
-            self.animate('blockRadius', 2, time=2, easing=easing.quart)
+            self.animate('blockRadius', 2, time=1, easing=easing.quart)
 
     def blocks(self, coord):
         if self.touched:
@@ -148,6 +156,22 @@ class Ball(AnimatedObject):
         self.coord = coord
         return length
 
+class BuildFlash(AnimatedObject):
+    def __init__(self, maze, coord, color):
+        AnimatedObject.__init__(self, maze.timer)
+        self.color = color
+        self.coord = coord
+        self.maze = maze
+        self.radius = 0
+        self.opacity = 1
+        self.animate('radius', 100, time=1)
+        self.animate('opacity', 0, time=1)
+
+    def draw(self):
+        self.maze.set_color(*self.color + (self.opacity, ))
+        drawCircle(self.coord, self.radius)
+        return self.opacity > 0
+
 class Maze(Game):
     solve_timer = 0
     def start(self, width, height):
@@ -176,6 +200,7 @@ class Maze(Game):
         self.all_indices = []
         self.balls = []
         self.touches = {}
+        self.decorations = []
 
         self.bdist = self.dist = self.matrix
         self.setWalls(self.matrix)
@@ -190,7 +215,7 @@ class Maze(Game):
         for i in range(11 * (self.width + self.height)):
             m = numpy.select([numpy.logical_and(corridors, m < infinity)], [m], infinity)
             m[self.start_point + (0,)] = m[(1, 1, 1)] = 1
-            m[self.start_cranny + (0,)] = 1
+            m[self.start_cranny + (2,)] = 1
             for ball in self.balls:
                 m[int(ball.coord[0]), int(ball.coord[1]), 2] = 1
             m = numpy.minimum(
@@ -198,10 +223,7 @@ class Maze(Game):
                     numpy.minimum(numpy.roll(m, 1, 1), numpy.roll(m, -1, 1)),
                 ) + 1
             m = numpy.select([corridors], [m], 0)
-            if self.balls:
-                theMax = m.max()
-            else:
-                theMax = m[:, :, :2].max()
+            theMax = m.max()
             if theMax < infinity:
                 break
         else:
@@ -272,6 +294,8 @@ class Maze(Game):
         self.set_color(0, 0, 1, 0.3)
         drawCircle(startCoord, self.cell_size * 3, linewidth=2)
 
+        self.decorations = [d for d in self.decorations if d.draw()]
+
     def getTile(self, x, y):
         return x * self.width / self.window_width, y * self.height / self.window_height
 
@@ -291,12 +315,8 @@ class Maze(Game):
             ball.touched = True
             self.touchMove(touch)
             return
-        try:
-            build = self.matrix[tileCoord] > 0
-        except IndexError:
-            return
         else:
-            self.touches[touch.id] = dict(role='wall', build=build)
+            self.touches[touch.id] = dict(role='gesture', points=[])
             self.touchMove(touch)
 
     def touchMove(self, touch):
@@ -316,7 +336,26 @@ class Maze(Game):
                 return
             else:
                 self.setWall(tileCoord, d['build'])
-        if d['role'] == 'ball':
+        elif d['role'] == 'gesture':
+            pts = d['points']
+            pts.append((x, y))
+            g = Gesture()
+            g.add_stroke(pts)
+            g.normalize()
+            try:
+                score, found = gdb.find(g)
+            except TypeError:
+                pass
+            else:
+                print found.build
+                self.touches[touch.id] = dict(role='wall', build=found.build)
+                if found.build:
+                    color = (0, 1, 0)
+                else:
+                    color = (1, 0, 0)
+                self.decorations.append(BuildFlash(self, (x, y), color))
+                self.touchMove(touch)
+        elif d['role'] == 'ball':
             ball = d['ball']
             ball.target = tileCoord
 
