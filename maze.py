@@ -159,36 +159,41 @@ class Ball(AnimatedObject):
         return length
 
 class Flash(AnimatedObject):
-    def __init__(self, maze, coord, color=(1,1,0)):
+    def __init__(self, maze, coord, color=(1,1,0), *args, **kwargs):
         AnimatedObject.__init__(self, maze.timer)
         self.color = color
         self.coord = coord
         self.maze = maze
-        self.setup()
+        self.setup(*args, **kwargs)
 
     def draw(self):
         self.maze.set_color(*self.color + (self.opacity, ))
         drawCircle(self.coord, self.radius)
         return self.opacity > 0
 
-class BuildFlash(Flash):
-    def setup(self):
-        print 'Build flash!'
-        self.opacity = 1
-        self.radius = 0
-        self.animate('radius', 100, time=1)
-        self.animate('opacity', 0, time=1)
-
 class BuildStartFlash(Flash):
-    def setup(self):
+    def setup(self, point):
         print 'Build-start flash!'
         self.opacity = 0
         self.radius = 50
+        self.points = list(point)
         self.animate('radius', self.maze.cell_size * 0.7, time=0.5)
         self.animate('opacity', 0.5, time=0.5)
 
     def end(self):
         self.animate('opacity', 0, time=0.5)
+
+    def explode(self):
+        self.animate('radius', 200, time=0.5, easing=easing.quad)
+        self.animate('opacity', 0, time=0.5)
+
+    def appendPoint(self, point):
+        self.points += point
+
+    def draw(self):
+        self.maze.set_color(*self.color + (self.opacity * 2, ))
+        drawPolygon(self.points, GL_LINE_LOOP, linewidth=2)
+        return Flash.draw(self)
 
 class Maze(Game):
     solve_timer = 0
@@ -219,7 +224,7 @@ class Maze(Game):
         self.balls = []
         self.touches = {}
         self.decorations = []
-        self.tries = set()
+        self.tries = set(), set()
 
         self.bdist = self.dist = self.matrix
         self.setWalls(self.matrix)
@@ -326,8 +331,13 @@ class Maze(Game):
             self.touchMove(touch)
             return
         else:
-            startCoord = numpy.array(tileCoord).round()
-            flash = BuildStartFlash(self, startCoord * (self.cell_width, self.cell_height) + 0.5, (1, 1, 0))
+            startCoord = numpy.floor(numpy.array(tileCoord))
+            flash = BuildStartFlash(
+                    self,
+                    (startCoord + 0.5) * (self.cell_width, self.cell_height),
+                    color=(1, 1, 0),
+                    point=(x, y),
+                )
             self.decorations.append(flash)
             self.touches[touch.id] = dict(
                     role='gesture',
@@ -349,7 +359,7 @@ class Maze(Game):
                 if ball.blocks(numpy.array(tileCoord) + 0.5):
                     return
             key = int(tileCoord[0]), int(tileCoord[1])
-            if key in self.tries:
+            if key in self.tries[d['build']]:
                 return
             try:
                 build = self.matrix[tileCoord] > 0
@@ -357,30 +367,51 @@ class Maze(Game):
                 return
             else:
                 if self.setWall(tileCoord, d['build']):
-                    self.tries = set()
+                    self.tries = set(), set()
                 else:
-                    self.tries.add(key)
+                    self.tries[d['build']].add(key)
         elif d['role'] == 'gesture':
             pts = d['points']
             pts.append((x, y))
-            g = Gesture()
-            g.add_stroke(pts)
-            g.normalize()
-            try:
-                score, found = gdb.find(g)
-            except TypeError:
-                pass
+            d['flash'].appendPoint((x, y))
+            length = sum(
+                    numpy.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+                    for (x1, y1), (x2, y2)
+                    in zip(pts, pts[1:])
+                )
+            (x1, y1), (x2, y2) = pts[-1], pts[0]
+            remainingLength = numpy.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+            perimeter = length + remainingLength
+            signedArea = sum(
+                    x1 * y2 - x2 * y1
+                    for (x1, y1), (x2, y2)
+                    in zip(pts, (pts[1:] + [pts[0]]))
+                ) / 2
+            areaInSquares = signedArea / self.cell_width / self.cell_height
+            # Require a loop of area >= N squares; give an indication of
+            # how far along it the drawer is
+            N = 3
+            l = (perimeter - remainingLength * 2)
+            if l <= 0:
+                indication = 0
             else:
-                print found.build
-                self.touches[touch.id] = dict(role='wall', build=found.build)
-                if found.build:
-                    color = (0, 1, 0)
-                else:
-                    color = (1, 0, 0)
-                startCoord = d['startCoord']
-                flash = BuildFlash(self, startCoord * (self.cell_width, self.cell_height), color)
-                self.decorations.append(flash)
-                d['flash'].end()
+                indication = areaInSquares * l / perimeter
+                indication /= N
+                if indication >= 1:
+                    indication = 1
+                if indication < -1:
+                    indication = -1
+            if indication > 0:
+                d['flash'].color = (1, 1 - indication, 0)
+                d['build'] = False
+            else:
+                d['flash'].color = (1 + indication, 1, 0)
+                d['build'] = True
+            if abs(areaInSquares) > N and (
+                    numpy.floor(tileCoord) == d['startCoord']
+                ).all():
+                d['role'] = 'wall'
+                d['flash'].explode()
                 self.touchMove(touch)
         elif d['role'] == 'ball':
             ball = d['ball']
