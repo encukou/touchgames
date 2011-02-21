@@ -156,21 +156,37 @@ class Ball(AnimatedObject):
         self.coord = coord
         return length
 
-class BuildFlash(AnimatedObject):
-    def __init__(self, maze, coord, color):
+class Flash(AnimatedObject):
+    def __init__(self, maze, coord, color=(1,1,0)):
         AnimatedObject.__init__(self, maze.timer)
         self.color = color
         self.coord = coord
         self.maze = maze
-        self.radius = 0
-        self.opacity = 1
-        self.animate('radius', 100, time=1)
-        self.animate('opacity', 0, time=1)
+        self.setup()
 
     def draw(self):
         self.maze.set_color(*self.color + (self.opacity, ))
         drawCircle(self.coord, self.radius)
         return self.opacity > 0
+
+class BuildFlash(Flash):
+    def setup(self):
+        print 'Build flash!'
+        self.opacity = 1
+        self.radius = 0
+        self.animate('radius', 100, time=1)
+        self.animate('opacity', 0, time=1)
+
+class BuildStartFlash(Flash):
+    def setup(self):
+        print 'Build-start flash!'
+        self.opacity = 0
+        self.radius = 50
+        self.animate('radius', self.maze.cell_size * 0.7, time=0.5)
+        self.animate('opacity', 0.5, time=0.5)
+
+    def end(self):
+        self.animate('opacity', 0, time=0.5)
 
 class Maze(Game):
     solve_timer = 0
@@ -195,12 +211,13 @@ class Maze(Game):
         self.matrix[self.width - 1, self.height - 2] = -4
         self.start_point = self.width - 2, self.height - 2
         self.start_cranny = self.width - 1, self.height - 2
-        self.recompute_set = set()#HintQueue(self)
+        self.recompute_set = set()
         self.recompute_set.add(self.start_point)
         self.all_indices = []
         self.balls = []
         self.touches = {}
         self.decorations = []
+        self.tries = set()
 
         self.bdist = self.dist = self.matrix
         self.setWalls(self.matrix)
@@ -316,7 +333,15 @@ class Maze(Game):
             self.touchMove(touch)
             return
         else:
-            self.touches[touch.id] = dict(role='gesture', points=[])
+            startCoord = numpy.array(tileCoord).round()
+            flash = BuildStartFlash(self, startCoord * (self.cell_width, self.cell_height) + 0.5, (1, 1, 0))
+            self.decorations.append(flash)
+            self.touches[touch.id] = dict(
+                    role='gesture',
+                    points=[],
+                    flash=flash,
+                    startCoord=startCoord,
+                )
             self.touchMove(touch)
 
     def touchMove(self, touch):
@@ -330,12 +355,18 @@ class Maze(Game):
             for ball in self.balls:
                 if ball.blocks(numpy.array(tileCoord) + 0.5):
                     return
+            key = int(tileCoord[0]), int(tileCoord[1])
+            if key in self.tries:
+                return
             try:
                 build = self.matrix[tileCoord] > 0
             except IndexError:
                 return
             else:
-                self.setWall(tileCoord, d['build'])
+                if self.setWall(tileCoord, d['build']):
+                    self.tries = set()
+                else:
+                    self.tries.add(key)
         elif d['role'] == 'gesture':
             pts = d['points']
             pts.append((x, y))
@@ -353,7 +384,10 @@ class Maze(Game):
                     color = (0, 1, 0)
                 else:
                     color = (1, 0, 0)
-                self.decorations.append(BuildFlash(self, (x, y), color))
+                startCoord = d['startCoord']
+                flash = BuildFlash(self, startCoord * (self.cell_width, self.cell_height), color)
+                self.decorations.append(flash)
+                d['flash'].end()
                 self.touchMove(touch)
         elif d['role'] == 'ball':
             ball = d['ball']
@@ -369,6 +403,10 @@ class Maze(Game):
             ball = d['ball']
             ball.target = ball.coord
             ball.touched = False
+        try:
+            d['flash'].end()
+        except KeyError:
+            pass
 
     def set_color(self, *rgb):
         if len(rgb) == 3:
