@@ -54,6 +54,8 @@ import touchgames
 from touchgames.game import Game
 from touchgames.gamecontroller import registerPyMTPlugin
 
+from mazesolver import solvemaze
+
 gdb = GestureDatabase()
 for build, gesture in (
         (True, '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'),
@@ -225,32 +227,21 @@ class Maze(Game):
     def setWalls(self, matrix):
         """Set walls and solve the maze. No-op if maze is unsolvable
         """
-        infinity = 2**30
-        m = numpy.zeros(matrix.shape + (3,), dtype=numpy.int32) + infinity
-        mat = numpy.dstack((matrix, matrix, matrix))
-        corridors = mat >= 0
-        for i in range(11 * (self.width + self.height)):
-            m = numpy.select([numpy.logical_and(corridors, m < infinity)], [m], infinity)
-            m[self.start_point + (0,)] = m[(1, 1, 1)] = 1
-            m[self.start_cranny + (2,)] = 1
-            for ball in self.balls:
-                m[int(ball.coord[0]), int(ball.coord[1]), 2] = 1
-            m = numpy.minimum(
-                    numpy.minimum(numpy.roll(m, 1, 0), numpy.roll(m, -1, 0)),
-                    numpy.minimum(numpy.roll(m, 1, 1), numpy.roll(m, -1, 1)),
-                ) + 1
-            m = numpy.select([corridors], [m], 0)
-            theMax = m.max()
-            if theMax < infinity:
-                break
-        else:
-            print 'maxed out!'
+        mstart = numpy.zeros(matrix.shape + (3,), dtype=numpy.int32)
+        mstart[self.start_point + (0,)] = mstart[(1, 1, 1)] = 1
+        mstart[self.start_cranny + (2,)] = 1
+        mstart[self.start_point + (2,)] = 1
+        for ball in self.balls:
+            mstart[int(ball.coord[0]), int(ball.coord[1]), 2] = 1
+        corridors = matrix >= 0
+        m = solvemaze(corridors, mstart)
+        if m is None:
             return False
         m[self.start_point + (0,)] = m[(1, 1, 1)] = 1
         self.bdist = m[:, :, 2]
         self.dist = m[:, :, 1]
         m = m[:, :, 0]
-        self.matrix = numpy.select([matrix < 0, m < infinity], [matrix, m], 0)
+        self.matrix = numpy.select([matrix < 0, True], [matrix, m])
         self.solve_timer = 0
         return True
 
@@ -263,6 +254,8 @@ class Maze(Game):
             self.setWalls(self.matrix)
 
     def setWall(self, coord, create):
+        if coord == self.start_cranny or coord == (2, 1):
+            return False
         m = self.matrix.copy()
         if create and self.matrix[coord] >= 0:
             m[coord] = -1
