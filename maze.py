@@ -125,6 +125,7 @@ class Ball(AnimatedObject):
                 break
             distance_covered += self.dragBy(self.target - self.coord)
         if (numpy.floor(self.coord) == (0, 1)).all():
+            self.maze.balls = [b for b in self.maze.balls if b != self]
             self.maze.win()
 
     def dragBy(self, delta):
@@ -214,27 +215,35 @@ class Label(AnimatedObject):
         glTranslatef(*self.coord)
         glScalef(1 / self.maze.cell_width, 1 / self.maze.cell_height, 1)
         glRotatef(-self.rotation, 0, 0, 1)
-        drawLabel(
-                self.text,
-                pos=(0, 1),
-                font_size=self.size * 1.1,
-                center=True,
-                color=(1, 1, 1, self.opacity / 2),
-            )
-        drawLabel(
-                self.text,
-                pos=(0, 1),
-                font_size=self.size,
-                center=True,
-                color=(0, 0, 1, self.opacity),
-            )
+        try:
+            drawLabel(
+                    self.text,
+                    pos=(0, 1),
+                    font_size=self.size * 1.1,
+                    center=True,
+                    color=(1, 1, 1, self.opacity / 2),
+                )
+            drawLabel(
+                    self.text,
+                    pos=(0, 1),
+                    font_size=self.size,
+                    center=True,
+                    color=(0, 0, 1, self.opacity),
+                )
+        except Exception:
+            pass
         glPopMatrix()
         return self.opacity
 
 class Maze(Game, AnimatedObject):
-    solve_timer = 0
+    def __init__(self, *args, **kwargs):
+        Game.__init__(self, *args, **kwargs)
+        AnimatedObject.__init__(self, Timer())
+        self.scale = 1
+        self.rotation = 0
+        self.surviving_decorations = []
+
     def start(self, width, height):
-        self.timer = Timer()
 
         cell_size = 20
         self.window_width = width
@@ -259,7 +268,8 @@ class Maze(Game, AnimatedObject):
         self.all_indices = []
         self.balls = []
         self.touches = {}
-        self.decorations = []
+        self.decorations = self.surviving_decorations
+        self.surviving_decorations = []
         self.tries = set(), set()
 
         self.bdist = self.dist = self.matrix
@@ -268,6 +278,8 @@ class Maze(Game, AnimatedObject):
         self.home_size = 0
 
         self.timer.schedule(1, lambda: self.countdown(5))
+
+        self.active = True
 
     def countdown(self, num):
         print num
@@ -338,6 +350,12 @@ class Maze(Game, AnimatedObject):
             return numpy.array((1-m, d, max(m, b))) ** 8
 
     def draw(self):
+        glPushMatrix()
+        glTranslatef(self.window_width / 2, self.window_height / 2, 0)
+        glScalef(self.scale, self.scale, 1)
+        glRotatef(self.rotation, 0, 0, 1)
+        glTranslatef(-self.window_width / 2, -self.window_height / 2, 0)
+
         self.set_color(1, 1, 1)
         for x in range(self.width):
             x_coord = x * self.cell_width
@@ -364,11 +382,21 @@ class Maze(Game, AnimatedObject):
 
         self.decorations = [d for d in self.decorations if d.draw()]
 
+        glPopMatrix()
+
+    def apply_transformation(self, x, y):
+        if self.rotation % 360 == 0:
+            return x, y
+        else:
+            return self.window_width - x, self.window_height - y
+
     def getTile(self, x, y):
         return x * self.width / self.window_width, y * self.height / self.window_height
 
     def touchDown(self, touch):
-        x, y = start = touch.x, touch.y
+        if not self.active:
+            return
+        x, y = start = self.apply_transformation(touch.x, touch.y)
         tileCoord = self.getTile(x, y)
         for ball in self.balls:
             if ball.hittest(tileCoord):
@@ -401,7 +429,9 @@ class Maze(Game, AnimatedObject):
             self.touchMove(touch)
 
     def touchMove(self, touch):
-        x, y = start = touch.x, touch.y
+        if not self.active:
+            return
+        x, y = start = self.apply_transformation(touch.x, touch.y)
         tileCoord = self.getTile(x, y)
         try:
             d = self.touches[touch.id]
@@ -519,7 +549,8 @@ class Maze(Game, AnimatedObject):
             set_color(0, 0, 0, 1)
             drawRectangle(pos=(c_x, c_y), size=(c_w + 1, c_h), style=GL_LINE_LOOP)
         else:
-            drawLabel("Start at blue corner!", pos=(0, r / 2), font_size=10, center=True, color=(0, 0, 0))
+            #drawLabel("Start at blue corner!", pos=(0, r / 2), font_size=10, center=True, color=(0, 0, 0))
+            pass
 
     def isWall(self, tileCoord):
         try:
@@ -528,7 +559,14 @@ class Maze(Game, AnimatedObject):
             return True
 
     def win(self):
-        self.start(self.window_width, self.window_height)
+        self.active = False
+        self.animate('home_size', 0, time=1)
+        self.animate('rotation', 180, time=2, additive=True, easing=easing.sin.inOut)
+        self.animate('scale', 0, time=2)
+        self.animate('scale', 1, time=2)
+        def newGame():
+            self.start(self.window_width, self.window_height)
+        self.timer.schedule(1.5, newGame)
 
 registerPyMTPlugin(Maze, globals())
 
