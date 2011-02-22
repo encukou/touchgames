@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+# Encoding: UTF-8
 
 from __future__ import division
 
@@ -123,6 +124,8 @@ class Ball(AnimatedObject):
             if abs(sum(self.target - self.coord)) < 0.01:
                 break
             distance_covered += self.dragBy(self.target - self.coord)
+        if (numpy.floor(self.coord) == (0, 1)).all():
+            self.maze.win()
 
     def dragBy(self, delta):
         # returns distance covered
@@ -195,7 +198,40 @@ class BuildStartFlash(Flash):
         drawPolygon(self.points, GL_LINE_LOOP, linewidth=2)
         return Flash.draw(self)
 
-class Maze(Game):
+class Label(AnimatedObject):
+    def __init__(self, maze, coord, text, size=60, rotation=-90):
+        AnimatedObject.__init__(self, maze.timer)
+        self.maze = maze
+        self.coord = (coord + (0, 0, 0))[:3]
+        self.text = text
+        self.size = size
+        self.rotation = rotation
+        self.opacity = 1
+
+    def draw(self):
+        glPushMatrix()
+        glScalef(self.maze.cell_width, self.maze.cell_height, 1)
+        glTranslatef(*self.coord)
+        glScalef(1 / self.maze.cell_width, 1 / self.maze.cell_height, 1)
+        glRotatef(-self.rotation, 0, 0, 1)
+        drawLabel(
+                self.text,
+                pos=(0, 1),
+                font_size=self.size * 1.1,
+                center=True,
+                color=(1, 1, 1, self.opacity / 2),
+            )
+        drawLabel(
+                self.text,
+                pos=(0, 1),
+                font_size=self.size,
+                center=True,
+                color=(0, 0, 1, self.opacity),
+            )
+        glPopMatrix()
+        return self.opacity
+
+class Maze(Game, AnimatedObject):
     solve_timer = 0
     def start(self, width, height):
         self.timer = Timer()
@@ -228,6 +264,21 @@ class Maze(Game):
 
         self.bdist = self.dist = self.matrix
         self.setWalls(self.matrix)
+
+        self.home_size = 0
+
+        self.timer.schedule(1, lambda: self.countdown(5))
+
+    def countdown(self, num):
+        print num
+        label = Label(self, (self.start_point[0] - 2, self.start_point[1] - 2), str(num) if num else 'Go!')
+        label.animate('size', label.size * 10, time=1, dt=0.5, easing=easing.quart)
+        label.animate('opacity', 0, time=1, dt=0.5, easing=easing.quad)
+        self.decorations.append(label)
+        if num > 0:
+            self.timer.schedule(1, lambda: self.countdown(num - 1))
+        else:
+            self.animate('home_size', 4, time=1)
 
     def setWalls(self, matrix):
         """Set walls and solve the maze. No-op if maze is unsolvable
@@ -303,11 +354,13 @@ class Maze(Game):
         for ball in self.balls:
             ball.draw()
 
-        startCoord = (self.window_width, self.window_height)
-        self.set_color(0, 0, 1, 0.1)
-        drawCircle(startCoord, self.cell_size * 3)
-        self.set_color(0, 0, 1, 0.3)
-        drawCircle(startCoord, self.cell_size * 3, linewidth=2)
+        if self.home_size:
+            home_size = self.home_size * self.cell_size
+            startCoord = (self.window_width, self.window_height)
+            self.set_color(0, 0, 1, 0.1)
+            drawCircle(startCoord, home_size)
+            self.set_color(0, 0, 1, 0.3)
+            drawCircle(startCoord, home_size, linewidth=2)
 
         self.decorations = [d for d in self.decorations if d.draw()]
 
@@ -323,7 +376,7 @@ class Maze(Game):
                 ball.touched = True
                 self.touchMove(touch)
                 return
-        if sum((numpy.array(tileCoord) - (self.width, self.height)) ** 2) < 3 ** 2:
+        if sum((numpy.array(tileCoord) - (self.width, self.height)) ** 2) < self.home_size ** 2:
             ball = Ball(self, self.start_cranny)
             self.balls.append(ball)
             self.touches[touch.id] = dict(role='ball', ball=ball)
@@ -473,6 +526,9 @@ class Maze(Game):
             return -2 <= self.matrix[int(tileCoord[0]), int(tileCoord[1])] < 0
         except IndexError:
             return True
+
+    def win(self):
+        self.start(self.window_width, self.window_height)
 
 registerPyMTPlugin(Maze, globals())
 
