@@ -168,24 +168,28 @@ class Flash(AnimatedObject):
         self.color = color
         self.coord = coord
         self.maze = maze
+        self.opacity = 1
+        self.radius = 50
         self.setup(*args, **kwargs)
+
+    def setup(self):
+        pass
 
     def draw(self):
         self.maze.set_color(*self.color + (self.opacity, ))
         drawCircle(self.coord, self.radius)
         return self.opacity > 0
 
+    def end(self):
+        self.animate('opacity', 0, time=0.5)
+
 class BuildStartFlash(Flash):
     def setup(self, point):
         print 'Build-start flash!'
         self.opacity = 0
-        self.radius = 50
         self.points = list(point)
         self.animate('radius', self.maze.cell_size * 0.7, time=0.5)
         self.animate('opacity', 0.5, time=0.5)
-
-    def end(self):
-        self.animate('opacity', 0, time=0.5)
 
     def explode(self):
         self.animate('radius', 200, time=0.5, easing=easing.quad)
@@ -219,14 +223,14 @@ class Label(AnimatedObject):
             drawLabel(
                     self.text,
                     pos=(0, 1),
-                    font_size=self.size * 1.1,
+                    font_size=round(self.size * 1.1, 1),
                     center=True,
                     color=(1, 1, 1, self.opacity / 2),
                 )
             drawLabel(
                     self.text,
                     pos=(0, 1),
-                    font_size=self.size,
+                    font_size=round(self.size, 1),
                     center=True,
                     color=(0, 0, 1, self.opacity),
                 )
@@ -241,7 +245,7 @@ class Maze(Game, AnimatedObject):
         AnimatedObject.__init__(self, Timer())
         self.scale = 1
         self.rotation = 0
-        self.surviving_decorations = []
+        self.board_decorations = []
 
     def start(self, width, height):
 
@@ -268,8 +272,7 @@ class Maze(Game, AnimatedObject):
         self.all_indices = []
         self.balls = []
         self.touches = {}
-        self.decorations = self.surviving_decorations
-        self.surviving_decorations = []
+        self.decorations = []
         self.tries = set(), set()
 
         self.bdist = self.dist = self.matrix
@@ -357,13 +360,9 @@ class Maze(Game, AnimatedObject):
         glTranslatef(-self.window_width / 2, -self.window_height / 2, 0)
 
         self.set_color(1, 1, 1)
-        for x in range(self.width):
-            x_coord = x * self.cell_width
-            #pymt.drawLine((x_coord, 0, x_coord + .1, self.window_height))
         for y in range(self.height):
             self.set_color(1, 1, 1)
             y_coord = y * self.cell_height
-            #pymt.drawLine((0, y_coord - .1, self.window_width, y_coord + .1))
             for x in range(self.width):
                 x_coord = x * self.cell_width
                 self.set_color(*self.tileColor(x, y))
@@ -383,6 +382,8 @@ class Maze(Game, AnimatedObject):
         self.decorations = [d for d in self.decorations if d.draw()]
 
         glPopMatrix()
+
+        self.board_decorations = [d for d in self.board_decorations if d.draw()]
 
     def apply_transformation(self, x, y):
         if self.rotation % 360 == 0:
@@ -561,12 +562,27 @@ class Maze(Game, AnimatedObject):
     def win(self):
         self.active = False
         self.animate('home_size', 0, time=1)
-        self.animate('rotation', 180, time=2, additive=True, easing=easing.sin.inOut)
-        self.animate('scale', 0, time=2)
-        self.animate('scale', 1, time=2)
+        self.animate('rotation', 180, time=2, additive=True, easing=easing.sin.outIn)
+        self.animate('scale', 0.2, time=1, easing=easing.sin.out)
+        self.animate('scale', 1, time=1, dt=1, easing=easing.sin)
         def newGame():
             self.start(self.window_width, self.window_height)
-        self.timer.schedule(1.5, newGame)
+        self.timer.schedule(1, newGame)
+
+        for i in range(30):
+            if self.rotation % 360:
+                start = self.window_width, self.window_height
+                direction = -1
+            else:
+                start = 0, 0
+                direction = 1
+            flash = Flash(self, start, color=(random.random() ** 2, random.random() ** 2, random.random() ** 0.5))
+            flash.radius = (random.random() + 1) * self.cell_size / 2
+            lifetime = 0.5 + random.random()
+            r = direction * (self.window_height + self.window_width) / 4
+            flash.animate('coord', (random.random() * r, random.random() * r), time=lifetime, easing=easing.quad.out, additive=True)
+            flash.animate('opacity', 0, time=lifetime)
+            self.board_decorations.append(flash)
 
 registerPyMTPlugin(Maze, globals())
 
