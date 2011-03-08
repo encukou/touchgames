@@ -223,14 +223,14 @@ class Label(AnimatedObject):
             drawLabel(
                     self.text,
                     pos=(0, 1),
-                    font_size=round(self.size * 1.1, 1),
+                    font_size=round(self.size * 1.1),
                     center=True,
                     color=(1, 1, 1, self.opacity / 2),
                 )
             drawLabel(
                     self.text,
                     pos=(0, 1),
-                    font_size=round(self.size, 1),
+                    font_size=round(self.size),
                     center=True,
                     color=(0, 0, 1, self.opacity),
                 )
@@ -249,7 +249,7 @@ class Maze(Game, AnimatedObject):
 
     def start(self, width, height):
 
-        cell_size = 20
+        cell_size = 30
         self.window_width = width
         self.window_height = height
         self.matrix = -numpy.transpose(
