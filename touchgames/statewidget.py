@@ -13,13 +13,13 @@ import numpy
 class StateWidget(MTWidget):
     """A widget that displays game state, and also serves as a drag-to-open menu
     """
-    width = 100
-    radius = 16
+    width = 150
+    radius = 30
     _stickout = 0
     stickout_max = 25
     stickout_full = 75
     retract_timer = 0
-    menu_spacing = 25
+    menu_spacing = 32
 
     def __init__(self, controller, rotation=0, **kwargs):
         MTWidget.__init__(self, **kwargs)
