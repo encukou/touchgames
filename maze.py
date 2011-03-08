@@ -128,6 +128,11 @@ class Ball(AnimatedObject):
             self.maze.balls = [b for b in self.maze.balls if b != self]
             self.maze.win()
 
+    def isOut(self):
+        return sum((self.coord -
+                (self.maze.width, self.maze.height)) ** 2
+            ) > self.maze.home_size ** 2
+
     def dragBy(self, delta):
         # returns distance covered
         length = numpy.sqrt(sum(delta ** 2))
@@ -284,6 +289,8 @@ class Maze(Game, AnimatedObject):
 
         self.active = True
 
+        self.time = 0
+
     def countdown(self, num):
         print num
         label = Label(self, (self.start_point[0] - 2, self.start_point[1] - 2), str(num) if num else 'Go!')
@@ -323,6 +330,9 @@ class Maze(Game, AnimatedObject):
         self.solve_timer += dt
         if self.solve_timer > 0.1:
             self.setWalls(self.matrix)
+        for ball in self.balls:
+            if ball.isOut():
+                self.time += dt
 
     def setWall(self, coord, create):
         if coord == self.start_cranny or coord == (2, 1):
@@ -552,6 +562,7 @@ class Maze(Game, AnimatedObject):
         else:
             #drawLabel("Start at blue corner!", pos=(0, r / 2), font_size=10, center=True, color=(0, 0, 0))
             pass
+        drawLabel("{0:.0f}:{1:=04.1f}".format(*divmod(self.time, 60)), pos=(0, r / 2), font_size=10, center=True, color=(0, 0, 0))
 
     def isWall(self, tileCoord):
         try:
