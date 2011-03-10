@@ -44,7 +44,7 @@ def solvemaze(corridors, mstart, maxiters=None):
 try:
     import pyximport
     pyximport.install()
-    from fastsolver import solvemaze
+    from touchgames.games.maze.fastsolver import solvemaze
 except Exception:
     print 'WARNING: Fast maze solver could not be loaded!'
     raise

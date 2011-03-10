@@ -124,7 +124,6 @@ class Game(MTWidget, AnimatedObject):
 
     def _log(self, *args):
         """Log an event"""
-        print "LOG", args
         if self.__log_file:
             entry = (int((self.timer.time - self.__log_lastTime) * 1000), ) + args
             pickle.dump(entry, self.__log_file, protocol=2)

@@ -28,8 +28,15 @@ class ReplayAdapter(Game):
         self.replayFile = gzip.GzipFile(fileobj=replayFile, mode='rb')
         self.replayEvent()
 
+    def start(self, width, height):
+        self.width = width
+        self.height = height
+
     def draw(self):
+        glPushMatrix()
+        glScalef(*self.scale)
         self.game.draw()
+        glPopMatrix()
         self.ghosts = dict((k, v) for k, v in self.ghosts.items() if v.draw(self))
 
     def drawStateContents(self, width, height, *args, **kwargs):
@@ -51,8 +58,14 @@ class ReplayAdapter(Game):
         func = None
         if eventtype == 'random':
             self.game = Maze(random_state=args[0])
+            self.game.color = lambda *args, **kwargs: self.color(*args, **kwargs)
         elif eventtype == 'replay_args':
             self.game.start(**args[0])
+            self.scale = (
+                    self.width / args[0]['width'],
+                    self.height / args[0]['height'],
+                    1,
+                )
         elif eventtype == 'update':
             dt = args[0] / 1000
             func = lambda: (self.game.timer.advance(dt), self.game.update(dt))
@@ -61,11 +74,14 @@ class ReplayAdapter(Game):
             touch = FakeTouch(touch)
             if tp == 'down':
                 self.game.touchDown(touch)
-                self.ghosts[touch.id] = Ghost(touch)
+                self.ghosts[touch.id] = Ghost()
             elif tp == 'move':
                 self.game.touchMove(touch)
                 try:
-                    self.ghosts[touch.id].addPoint(touch.x, touch.y)
+                    self.ghosts[touch.id].addPoint(
+                            touch.x * self.scale[0],
+                            touch.y * self.scale[1],
+                        )
                 except KeyError:
                     pass
             elif tp == 'up':
@@ -83,15 +99,13 @@ class ReplayAdapter(Game):
         self.timer.schedule(time, self.replayEvent)
 
 class Ghost(AnimatedObject):
-    def __init__(self, touch=None):
+    def __init__(self):
         AnimatedObject.__init__(self)
         self.points = []
         self.opacity = 1
-        if touch:
-            self.addPoint(touch.x, touch.y)
 
-    def addPoint(self, *point):
-        self.points.append(point)
+    def addPoint(self, x, y):
+        self.points.append((x, y))
 
     def draw(self, controller):
         if self.opacity > .5:

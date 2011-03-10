@@ -7,9 +7,9 @@ setup(
     email = 'encukou@gmail.com',
 
     install_requires=[
-        #'PyMT >= 0.5',
+        'PyMT >= 0.5',
         'Shapely >= 1.2',
-        'numpy >= 1.3',
+        #'numpy >= 1.3',
     ],
 
     packages = find_packages(),

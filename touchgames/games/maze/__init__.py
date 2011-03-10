@@ -54,7 +54,7 @@ import touchgames
 from touchgames.game import Game
 from touchgames.gamecontroller import registerPyMTPlugin
 
-from mazesolver import solvemaze
+from touchgames.games.maze.mazesolver import solvemaze
 
 gdb = GestureDatabase()
 for build, gesture in (
