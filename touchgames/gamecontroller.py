@@ -154,7 +154,7 @@ class GameController(MTWidget):
     def menuContents(self):
         """Retrieve menu contents to be displayed in a state widget"""
         if self.paused:
-            return self.game.menuContents(True) + [self.quit, self.unpause]
+            return [self.quit, self.unpause] + self.game.menuContents(True)
         else:
             return [self.pause] + self.game.menuContents(False)
 

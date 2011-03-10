@@ -366,6 +366,15 @@ class Maze(Game):
         else:
             return False
 
+    darkWalls = True
+    def swapColorScheme(self, darkWalls=None):
+        if darkWalls is None:
+            darkWalls = not self.darkWalls
+        self.darkWalls = darkWalls
+        self.log('darkWalls', darkWalls)
+    swapColorScheme.name = 'Swap color scheme'
+    replay_darkWalls = swapColorScheme
+
     def tileColor(self, x, y):
         m = 0
         if self.matrix[x, y] == -4:
@@ -373,13 +382,24 @@ class Maze(Game):
         elif self.matrix[x, y] == -3:
             return self.tileColor(x + 1, y)
         elif self.matrix[x, y] < 0:
-            return 0, 0, 0
+            if self.darkWalls:
+                return 0, 0, 0
+            else:
+                return 1, 1, 1
         else:
-            #return 0, 0, 0
-            m = 1 - (self.matrix[x, y] / self.matrix.max())
-            d = 1 - (self.dist[x, y] / self.dist.max())
-            b = 1 - (self.bdist[x, y] / self.bdist.max())
-            return 1 - numpy.array((1-m, d, max(m, b))) ** 8
+            m = self.matrix[x, y]
+            d = self.dist[x, y]
+            b = self.bdist[x, y]
+            mmax = self.matrix.max()
+            dmax = self.dist.max()
+            bmax = self.bdist.max()
+            r = m / mmax
+            g = 1 - d / dmax
+            b = 1 - min(m, b) / min(mmax, bmax)
+            if self.darkWalls:
+                return 1 - (numpy.array((max(g, b), max(r, b), max(r, g))) ** 8) / 2
+            else:
+                return numpy.array((r, g, b)) ** 8
 
     def draw(self):
         glPushMatrix()
@@ -516,12 +536,11 @@ class Maze(Game):
                     indication = 1
                 if indication < -1:
                     indication = -1
-            if indication > 0:
-                d['flash'].color = (1, 1 - indication, 0)
-                d['build'] = False
+            d['build'] = (indication < 0)
+            if bool(indication > 0) ^ bool(self.darkWalls):
+                d['flash'].color = (1, 1 - abs(indication), 0)
             else:
-                d['flash'].color = (1 + indication, 1, 0)
-                d['build'] = True
+                d['flash'].color = (1 - abs(indication), 1, 0)
             if abs(areaInSquares) > N and (
                     numpy.floor(tileCoord) == d['startCoord']
                 ).all():
@@ -608,6 +627,9 @@ class Maze(Game):
             flash.animate('coord', (random.random() * r, random.random() * r), time=lifetime, easing=easing.quad.out, additive=True)
             flash.animate('opacity', 0, time=lifetime)
             self.board_decorations.append(flash)
+
+    def menuContents(self, paused):
+        return [self.swapColorScheme]
 
 def formatTime(time):
     return "{0:.0f}:{1:=04.1f}".format(*divmod(time, 60))

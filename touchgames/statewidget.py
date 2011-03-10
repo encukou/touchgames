@@ -16,8 +16,6 @@ class StateWidget(MTWidget):
     width = 150
     radius = 30
     _stickout = 0
-    stickout_max = 25
-    stickout_full = 75
     retract_timer = 0
     menu_spacing = 32
 
@@ -59,6 +57,11 @@ class StateWidget(MTWidget):
     @property
     def menuContents(self):
         return self.controller.menuContents
+
+    @property
+    def stickout_max(self):
+        return self.menu_spacing * len(self.menuContents)
+    stickout_full = stickout_max
 
     @property
     def stickout(self):
