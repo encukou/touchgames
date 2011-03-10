@@ -9,7 +9,6 @@ from numpy.random import random_integers as rnd
 import matplotlib.pyplot as plt
 
 from gillcup.animatedobject import AnimatedObject
-from gillcup.timer import Timer
 from gillcup import easing
 
 def maze(width=81, height=51, complexity=0.75, density=0.75):
@@ -190,7 +189,7 @@ class Flash(AnimatedObject):
 
 class BuildStartFlash(Flash):
     def setup(self, point):
-        print 'Build-start flash!'
+        print 'Build-start flash!', point
         self.opacity = 0
         self.points = list(point)
         self.animate('radius', self.maze.cell_size * 0.7, time=0.5)
@@ -217,6 +216,19 @@ class Label(AnimatedObject):
         self.size = size
         self.rotation = rotation
         self.opacity = 1
+        self.times = [0, 0]
+
+    @property
+    def activeSide(self):
+        return 0 if self.rotation == 0 else 1
+
+    @property
+    def time(self):
+        return self.times[self.activeSide]
+
+    @time.setter
+    def time(self, newValue):
+        self.times[self.activeSide] = newValue
 
     def draw(self):
         glPushMatrix()
@@ -244,25 +256,33 @@ class Label(AnimatedObject):
         glPopMatrix()
         return self.opacity
 
-class Maze(Game, AnimatedObject):
-    def __init__(self, *args, **kwargs):
-        Game.__init__(self, *args, **kwargs)
-        AnimatedObject.__init__(self, Timer())
+class Maze(Game):
+    def __init__(self, log=None, replay=None, **kwargs):
+        Game.__init__(self, **kwargs)
         self.scale = 1
         self.rotation = 0
         self.board_decorations = []
+        np.random.seed(self.random.randint(0, 2**32))
 
-    def start(self, width, height):
-
-        cell_size = 30
+    def start(self, width, height, cell_size=30):
+        self.cell_size = cell_size
         self.window_width = width
         self.window_height = height
+        self.startGame()
+        return dict(
+                cell_size=cell_size,
+            )
+
+    def startGame(self):
         self.matrix = -numpy.transpose(
-                numpy.array(maze(width // cell_size, height // cell_size), dtype=numpy.int8)
+                numpy.array(maze(
+                        self.window_width // self.cell_size,
+                        self.window_height // self.cell_size
+                    ), dtype=numpy.int8)
             )
         self.width, self.height = self.matrix.shape
-        self.cell_width = width / self.width
-        self.cell_height = height / self.height
+        self.cell_width = self.window_width / self.width
+        self.cell_height = self.window_height / self.height
         self.cell_size = (self.cell_width + self.cell_height) / 2
         for x in range(self.width):
             self.matrix[x, 0] = self.matrix[x, self.height - 1] = -2
@@ -324,7 +344,6 @@ class Maze(Game, AnimatedObject):
         return True
 
     def update(self, dt):
-        self.timer.advance(dt)
         for ball in self.balls:
             ball.update(dt)
         self.solve_timer += dt
@@ -354,13 +373,13 @@ class Maze(Game, AnimatedObject):
         elif self.matrix[x, y] == -3:
             return self.tileColor(x + 1, y)
         elif self.matrix[x, y] < 0:
-            return 1, 1, 1
+            return 0, 0, 0
         else:
             #return 0, 0, 0
             m = 1 - (self.matrix[x, y] / self.matrix.max())
             d = 1 - (self.dist[x, y] / self.dist.max())
             b = 1 - (self.bdist[x, y] / self.bdist.max())
-            return numpy.array((1-m, d, max(m, b))) ** 8
+            return 1 - numpy.array((1-m, d, max(m, b))) ** 8
 
     def draw(self):
         glPushMatrix()
@@ -408,6 +427,7 @@ class Maze(Game, AnimatedObject):
         if not self.active:
             return
         x, y = start = self.apply_transformation(touch.x, touch.y)
+        print 'down', x, y
         tileCoord = self.getTile(x, y)
         for ball in self.balls:
             if ball.hittest(tileCoord):
@@ -443,6 +463,7 @@ class Maze(Game, AnimatedObject):
         if not self.active:
             return
         x, y = start = self.apply_transformation(touch.x, touch.y)
+        print 'move', x, y
         tileCoord = self.getTile(x, y)
         try:
             d = self.touches[touch.id]
@@ -512,6 +533,7 @@ class Maze(Game, AnimatedObject):
             ball.target = tileCoord
 
     def touchUp(self, touch):
+        print 'up', touch.x, touch.y
         try:
             d = self.touches[touch.id]
             del self.touches[touch.id]
@@ -525,12 +547,6 @@ class Maze(Game, AnimatedObject):
             d['flash'].end()
         except KeyError:
             pass
-
-    def set_color(self, *rgb):
-        if len(rgb) == 3:
-            glColor3f(*self.color(*rgb))
-        else:
-            glColor4f(*self.color(*rgb))
 
     def drawStateContents(self, w, r, *args, **kwargs):
         b = border = 4
@@ -562,7 +578,7 @@ class Maze(Game, AnimatedObject):
         else:
             #drawLabel("Start at blue corner!", pos=(0, r / 2), font_size=10, center=True, color=(0, 0, 0))
             pass
-        drawLabel("{0:.0f}:{1:=04.1f}".format(*divmod(self.time, 60)), pos=(0, r / 2), font_size=10, center=True, color=(0, 0, 0))
+        drawLabel(formatTime(self.time), pos=(0, r / 2), font_size=10, center=True, color=(0, 0, 0))
 
     def isWall(self, tileCoord):
         try:
@@ -576,9 +592,7 @@ class Maze(Game, AnimatedObject):
         self.animate('rotation', 180, time=2, additive=True, easing=easing.sin.outIn)
         self.animate('scale', 0.2, time=1, easing=easing.sin.out)
         self.animate('scale', 1, time=1, dt=1, easing=easing.sin)
-        def newGame():
-            self.start(self.window_width, self.window_height)
-        self.timer.schedule(1, newGame)
+        self.timer.schedule(1, self.startGame)
 
         for i in range(30):
             if self.rotation % 360:
@@ -594,6 +608,9 @@ class Maze(Game, AnimatedObject):
             flash.animate('coord', (random.random() * r, random.random() * r), time=lifetime, easing=easing.quad.out, additive=True)
             flash.animate('opacity', 0, time=lifetime)
             self.board_decorations.append(flash)
+
+def formatTime(time):
+    return "{0:.0f}:{1:=04.1f}".format(*divmod(time, 60))
 
 registerPyMTPlugin(Maze, globals())
 
