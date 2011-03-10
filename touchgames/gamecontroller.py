@@ -8,6 +8,7 @@ from __future__ import division
 
 import math
 from pymt import *
+from datetime import datetime
 
 from touchgames.statewidget import StateWidget
 
@@ -53,7 +54,8 @@ class GameController(MTWidget):
 
     def on_update(self):
         MTWidget.on_update(self)
-        dt = getFrameDt()
+        msec = int(getFrameDt() * 1000)
+        dt = msec / 1000
         # Start self
         self.start()
         self.start = lambda: None
@@ -71,10 +73,22 @@ class GameController(MTWidget):
         # Start game if not started
         game = self.game
         if not game.started:
+            try:
+                args = game._replay_args
+            except AttributeError:
+                args = {}
             p = self.get_parent_window()
-            game.start(p.width, p.height)
+            args.setdefault('width', p.width)
+            args.setdefault('height', p.height)
+            rv = game.start(**args)
+            if rv:
+                rv.setdefault('width', args['width'])
+                rv.setdefault('height', args['height'])
+                game._log('replay_args', rv)
             game.started = True
         if not self.paused:
+            game._log('update', msec)
+            game.timer.advance(dt)
             game.update(dt)
         elif self.pauseAnimation < 1:
             game.update(dt * (1 - self.pauseAnimation))
@@ -109,6 +123,8 @@ class GameController(MTWidget):
             if widget.on_touch_down(touch):
                 return
         if self.game and not self.paused:
+            self.game.logTouch('down', touch)
+            touch.grab(self)
             self.game.touchDown(touch)
         return self.paused
 
@@ -119,6 +135,7 @@ class GameController(MTWidget):
                 return
         MTWidget.on_touch_move(self, touch)
         if self.game and not self.paused:
+            self.game.logTouch('move', touch)
             self.game.touchMove(touch)
         return self.paused
 
@@ -129,6 +146,7 @@ class GameController(MTWidget):
                 return
         MTWidget.on_touch_up(self, touch)
         if self.game and not self.paused:
+            self.game.logTouch('up', touch)
             self.game.touchUp(touch)
         return self.paused
 
@@ -183,17 +201,19 @@ def registerPyMTPlugin(cls, globals=None):
     globals is a dictionary. If given, the functions are entered into it.
     Pass the globals() dictionary of a module to register the plugin
     """
-    def pymt_plugin_activate(w, ctx):
-        ctx.c = GameController(cls())
+    def pymt_plugin_activate(w, ctx, *args, **kwargs):
+        kwargs.setdefault('log_to', 'log-%s.log' % datetime.now().isoformat())
+        kwargs.setdefault('replay_from', 'test.log')
+        ctx.c = GameController(cls(*args, **kwargs))
         w.add_widget(ctx.c)
 
     def pymt_plugin_deactivate(w, ctx):
         w.remove_widget(ctx.c)
 
-    def main():
+    def main(*args, **kwargs):
         w = MTWindow()
         ctx = MTContext()
-        pymt_plugin_activate(w, ctx)
+        pymt_plugin_activate(w, ctx, *args, **kwargs)
         runTouchApp()
         pymt_plugin_deactivate(w, ctx)
 
