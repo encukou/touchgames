@@ -9,7 +9,7 @@ from collections import defaultdict
 from touchgames.game import Game
 from touchgames.gamecontroller import registerPyMTPlugin
 
-from touchgames.maze import Maze
+from touchgames.games.maze import Maze
 
 from pymt import *
 from OpenGL.GL import *
@@ -54,7 +54,7 @@ class ReplayAdapter(Game):
         time, eventtype = event[:2]
         time /= 1000
         args = event[2:]
-        print 'Replaying', event
+        #print 'Replaying', event
         func = None
         if eventtype == 'random':
             self.game = Maze(random_state=args[0])
@@ -117,7 +117,7 @@ class Ghost(AnimatedObject):
         try:
             lx, ly = self.points[-1]
         except IndexError:
-            return
+            return self.opacity
         rect = [
                     (lx-20, ly-20),
                     (lx-20, ly+20),
