@@ -216,19 +216,6 @@ class Label(AnimatedObject):
         self.size = size
         self.rotation = rotation
         self.opacity = 1
-        self.times = [0, 0]
-
-    @property
-    def activeSide(self):
-        return 0 if self.rotation == 0 else 1
-
-    @property
-    def time(self):
-        return self.times[self.activeSide]
-
-    @time.setter
-    def time(self, newValue):
-        self.times[self.activeSide] = newValue
 
     def draw(self):
         glPushMatrix()
@@ -257,12 +244,17 @@ class Label(AnimatedObject):
         return self.opacity
 
 class Maze(Game):
+    numLaps = 3
+
     def __init__(self, log=None, replay=None, **kwargs):
         Game.__init__(self, **kwargs)
         self.scale = 1
         self.rotation = 0
         self.board_decorations = []
         np.random.seed(self.random.randint(0, 2**32))
+        self.times = [0, 0]
+        self.activeSide = 0
+        self.lap = 0
 
     def start(self, width, height, cell_size=30):
         self.cell_size = cell_size
@@ -309,7 +301,13 @@ class Maze(Game):
 
         self.active = True
 
-        self.time = 0
+    @property
+    def time(self):
+        return self.times[self.activeSide]
+
+    @time.setter
+    def time(self, newValue):
+        self.times[self.activeSide] = newValue
 
     def countdown(self, num):
         print num
@@ -402,35 +400,61 @@ class Maze(Game):
                 return numpy.array((r, g, b)) ** 8
 
     def draw(self):
-        glPushMatrix()
-        glTranslatef(self.window_width / 2, self.window_height / 2, 0)
-        glScalef(self.scale, self.scale, 1)
-        glRotatef(self.rotation, 0, 0, 1)
-        glTranslatef(-self.window_width / 2, -self.window_height / 2, 0)
+        if self.scale <= 1:
+            for i, time in enumerate(self.times):
+                with gx_matrix:
+                    glTranslatef((1 - i) * self.window_width, self.window_height / 2, 0)
+                    glRotatef(i * 180 + 90, 0, 0, 1)
+                    if self.activeSide == 0:
+                        color = 1, 1, 1, 1
+                        ltext = "Game %s/%s" % (self.lap + 1, self.numLaps)
+                    else:
+                        if time == max(self.times):
+                            ltext = "Second place"
+                            color = 0.7, 0.75, 0.75, 1
+                        else:
+                            ltext = "Winner!"
+                            color = 0.94, 0.71, 0.098, 1
+                    drawLabel(
+                            formatTime(time),
+                            pos=(0, 60),
+                            font_size=50,
+                            center=True,
+                            color=color,
+                        )
+                    drawLabel(
+                            ltext,
+                            pos=(0, 130),
+                            font_size=50,
+                            center=True,
+                            color=color,
+                        )
+        with gx_matrix:
+            glTranslatef(self.window_width / 2, self.window_height / 2, 0)
+            glScalef(self.scale, self.scale, 1)
+            glRotatef(self.rotation, 0, 0, 1)
+            glTranslatef(-self.window_width / 2, -self.window_height / 2, 0)
 
-        self.set_color(1, 1, 1)
-        for y in range(self.height):
             self.set_color(1, 1, 1)
-            y_coord = y * self.cell_height
-            for x in range(self.width):
-                x_coord = x * self.cell_width
-                self.set_color(*self.tileColor(x, y))
-                drawRectangle((x_coord, y_coord), (self.cell_width, self.cell_height))
+            for y in range(self.height):
+                y_coord = y * self.cell_height
+                for x in range(self.width):
+                    x_coord = x * self.cell_width
+                    self.set_color(*self.tileColor(x, y))
+                    drawRectangle((x_coord, y_coord), (self.cell_width, self.cell_height))
 
-        for ball in self.balls:
-            ball.draw()
+            for ball in self.balls:
+                ball.draw()
 
-        if self.home_size:
-            home_size = self.home_size * self.cell_size
-            startCoord = (self.window_width, self.window_height)
-            self.set_color(0, 0, 1, 0.1)
-            drawCircle(startCoord, home_size)
-            self.set_color(0, 0, 1, 0.3)
-            drawCircle(startCoord, home_size, linewidth=2)
+            if self.home_size:
+                home_size = self.home_size * self.cell_size
+                startCoord = (self.window_width, self.window_height)
+                self.set_color(0, 0, 1, 0.1)
+                drawCircle(startCoord, home_size)
+                self.set_color(0, 0, 1, 0.3)
+                drawCircle(startCoord, home_size, linewidth=2)
 
-        self.decorations = [d for d in self.decorations if d.draw()]
-
-        glPopMatrix()
+            self.decorations = [d for d in self.decorations if d.draw()]
 
         self.board_decorations = [d for d in self.board_decorations if d.draw()]
 
@@ -610,8 +634,19 @@ class Maze(Game):
         self.animate('home_size', 0, time=1)
         self.animate('rotation', 180, time=2, additive=True, easing=easing.sin.outIn)
         self.animate('scale', 0.2, time=1, easing=easing.sin.out)
-        self.animate('scale', 1, time=1, dt=1, easing=easing.sin)
-        self.timer.schedule(1, self.startGame)
+        if self.lap + 1 < self.numLaps or self.activeSide == 0:
+            self.animate('scale', 1, time=1, dt=1, easing=easing.sin)
+            self.timer.schedule(1, self.startGame)
+
+            def swapSide():
+                if self.activeSide == 0:
+                    self.activeSide = 1
+                else:
+                    self.activeSide = 0
+                    self.lap += 1
+            self.timer.schedule(2, swapSide)
+        else:
+            self.animate('scale', 0, time=1, dt=1, easing=easing.sin.out)
 
         for i in range(30):
             if self.rotation % 360:
