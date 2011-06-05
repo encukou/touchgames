@@ -10,6 +10,8 @@ from time import time
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.clock import Clock
+from kivy.uix.label import Label
+from kivy.graphics import Rectangle, Color
 import kivy.clock
 from kivy.input.motionevent import MotionEvent
 
@@ -79,31 +81,43 @@ class Replay(App):
     Replay monkeypatches kivy.clock.time to fire events read from the log
     file.
 
+    Touching the replay will change the replay speed based on the y (up/down)
+    -coordinate of the touch, from 50% to 200%. (NB. every clock tick is still
+    processed, so speedups might not actually be that big).
+
     This is more of a dirty hack than other parts of the code.
     """
     def __init__(self, log_filename):
         super(Replay, self).__init__()
         kivy.clock.time = self.time
         self.stream = gzip.GzipFile(fileobj=open(log_filename, 'rb'))
-        self.start_time = time()
+        self.first_tick = time()
+        self.last_tick = time()
+        self.time_elapsed = 0
         self.stream_time = 0
         self.next_id = 0
-
-    @property
-    def time_elapsed(self):
-        return time() - self.start_time
+        self.clock_speed = 1
 
     def build(self):
         self.top_widget = Widget()
+        self.content_widget = Widget()
+        self.top_widget.add_widget(self.content_widget)
+        self.top_widget.add_widget(SpeedAdjuster(self))
         return self.top_widget
 
     def time(self):
         """Like time.time(), but handles events from the log file
         """
+        current = time()
+        self.time_elapsed += (current - self.last_tick) * self.clock_speed
+        self.last_tick = current
         while self.stream and self.time_elapsed > self.stream_time:
             rec = pickle.load(self.stream)
             getattr(self, 'handle_' + rec[0])(*rec[1:])
-        return time()
+            if rec[0] == 'dt':
+                # Ensure every tick gets handled
+                break
+        return self.first_tick + self.stream_time
 
     # Handlers for events from the log file:
 
@@ -113,7 +127,7 @@ class Replay(App):
 
     def handle_add_widget(self, cls):
         """Add a child widget"""
-        self.top_widget.add_widget(cls())
+        self.content_widget.add_widget(cls())
 
     def handle_dt(self, dt):
         """Tick the clock"""
@@ -136,11 +150,46 @@ class Replay(App):
         touch = ReplayMotionEvent(None, attrs['id'], attrs)
         for name, value in attrs.items():
             setattr(touch, name, value)
-        self.top_widget.dispatch(event, touch)
+        self.content_widget.dispatch(event, touch)
+
+class SpeedAdjuster(Widget):
+    """Widget that adjusts the clock_speed of a Replay,
+    based on its last touch's y-coordinate
+    """
+    def __init__(self, replay):
+        self.replay = replay
+        super(SpeedAdjuster, self).__init__()
+
+    def on_touch_down(self, touch):
+        try:
+            self.remove_widget(self.display)
+        except AttributeError:
+            pass
+        self.active_touch_uid = touch.uid
+        return self.on_touch_move(touch)
+
+    def on_touch_move(self, touch):
+        if self.active_touch_uid == touch.uid:
+            self.replay.clock_speed = factor = (touch.sy * 1.91 + 0.1)
+            self.canvas.clear()
+            with self.canvas:
+                Color(0.2, 0, 0, 0.5)
+                Rectangle(size=(self.get_parent_window().width, 20),
+                        pos=(0, touch.y - 10))
+            self.display = Label(text='Replay speed: {0:03}%'.format(
+                    int(factor * 100)), width=self.get_parent_window().width,
+                    pos=(0, touch.y - 5), height=10, color=(1, 1, 1, 1))
+            self.add_widget(self.display)
+        return True
+
+    def on_touch_up(self, touch):
+        if self.active_touch_uid == touch.uid:
+            self.canvas.clear()
+            self.remove_widget(self.display)
+        return True
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         print "Usage: %s <logfile>" % sys.argv[0]
     else:
         Replay(sys.argv[1]).run()
-
