@@ -38,7 +38,7 @@ def yield_groups(source, n):
 
     For example, with n=2: 1, 2, 3, 4, 5, 6 -> (1, 2), (3, 4), (5, 6)
     """
-    return itertools.izip(*[iter(source)]*n)
+    return itertools.izip(*[iter(source)] * n)
 
 def HollowCircle(pos, radius, segments=50):
     """Draw a circle outline with the specified center and radius
@@ -88,7 +88,7 @@ class BallSource(Widget):
         with self.canvas:
             Color(0, 0, 1, 0.5)
             Ellipse(
-                    pos=[p-s for p, s in zip(self.pos, self.size)],
+                    pos=[p - s for p, s in zip(self.pos, self.size)],
                     size=[x * 2 - 1 for x in self.size],
                 )
             Color(1, 1, 1, 1)
@@ -855,7 +855,7 @@ class MazeGame(Widget):
     Keeps stats about the game, and the current MazeBoard
     """
     def __init__(self, **kwargs):
-        numpy.random.seed(random.randint(0, 2**30))
+        numpy.random.seed(random.randint(0, 2 ** 30))
         super(MazeGame, self).__init__(**kwargs)
         # `times`: the elapsed times of the players, or “negative scores”
         self.times = [0, 0]
@@ -964,7 +964,7 @@ class MazeGame(Widget):
                     color = (0, 0.5, 1, 1)
                 l = Label(text=self.messages[edge],
                         pos=(
-                                -self.board.window_height / 2, 
+                                -self.board.window_height / 2,
                                 -self.board.window_width / 2,
                             ),
                         size=(self.board.window_height, cell_size),
@@ -1206,35 +1206,35 @@ def create_maze(width=81, height=51, complexity=0.975, density=0.975):
     Adapted from: http://en.wikipedia.org/wiki/Maze_generation_algorithm
     """
     # Only odd shapes
-    shape = ((height//2)*2+1, (width//2)*2+1)
+    shape = ((height // 2) * 2 + 1, (width // 2) * 2 + 1)
     # Adjust complexity and density relative to maze size
-    complexity = int(complexity*(5*(shape[0]+shape[1])))
-    density    = int(density*(shape[0]//2*shape[1]//2))
+    complexity = int(complexity * (5 * (shape[0] + shape[1])))
+    density = int(density * (shape[0] // 2 * shape[1] // 2))
     # Build actual maze
     Z = numpy.zeros(shape, dtype=bool)
     # Fill borders
-    Z[0,:] = Z[-1,:] = 1
-    Z[:,0] = Z[:,-1] = 1
+    Z[0, :] = Z[-1, :] = 1
+    Z[:, 0] = Z[:, -1] = 1
     # Make isles
     for i in range(density):
-        x = random_integers(0,shape[1]//2)*2
-        y = random_integers(0,shape[0]//2)*2
-        Z[y,x] = 1
+        x = random_integers(0, shape[1] // 2) * 2
+        y = random_integers(0, shape[0] // 2) * 2
+        Z[y, x] = 1
         for j in range(complexity):
             neighbours = []
             if x > 1:
-                neighbours.append( (y,x-2) )
-            if x < shape[1]-2:
-                neighbours.append( (y,x+2) )
+                neighbours.append((y, x - 2))
+            if x < shape[1] - 2:
+                neighbours.append((y, x + 2))
             if y > 1:
-                neighbours.append( (y-2,x) )
-            if y < shape[0]-2:
-                neighbours.append( (y+2,x) )
+                neighbours.append((y - 2, x))
+            if y < shape[0] - 2:
+                neighbours.append((y + 2, x))
             if len(neighbours):
-                y_,x_ = neighbours[random_integers(0,len(neighbours)-1)]
-                if Z[y_,x_] == 0:
-                    Z[y_,x_] = 1
-                    Z[y_+(y-y_)//2, x_+(x-x_)//2] = 1
+                y_, x_ = neighbours[random_integers(0, len(neighbours) - 1)]
+                if Z[y_, x_] == 0:
+                    Z[y_, x_] = 1
+                    Z[y_ + (y - y_) // 2, x_ + (x - x_) // 2] = 1
                     x, y = x_, y_
     return Z
 
