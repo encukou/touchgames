@@ -1,3 +1,4 @@
+# Encoding: UTF-8
 
 from __future__ import division
 
@@ -32,9 +33,17 @@ MIN_LOOP_AREA = 3  # tiles squared
 NUM_ROUNDS = 2
 
 def yield_groups(source, n):
+    """Divide an iterator into tuples of n consecutive elements
+
+    For example, with n=2: 1, 2, 3, 4, 5, 6 -> (1, 2), (3, 4), (5, 6)
+    """
     return itertools.izip(*[iter(source)]*n)
 
 def HollowCircle(pos, radius, segments=50):
+    """Draw a circle outline with the specified center and radius
+
+    Return the resulting kivy graphics instruction
+    """
     points = list(itertools.chain(*tuple((
                 pos[0] + math.cos(t / segments * 2 * math.pi) * radius,
                 pos[1] + math.sin(t / segments * 2 * math.pi) * radius,
@@ -44,22 +53,35 @@ def HollowCircle(pos, radius, segments=50):
     return Line(points=points)
 
 def FilledCircle(pos=(0, 0), radius=1):
+    """Draw a filled circle with the specified center and radius
+
+    Return the resulting kivy graphics instruction
+    """
     return Ellipse(
             pos=(pos[0] - radius, pos[1] - radius),
             size=(radius * 2, radius * 2),
         )
 
 class BallSource(Widget):
+    """The quarter-circle in the corner that balls are spawned from
+
+    Will be initially zero-sized, then grown when `grow` is called.
+    Provides collision detection, which is checked when balls are generated.
+    """
     def __init__(self, **kwargs):
         super(BallSource, self).__init__(**kwargs)
 
     def grow(self, size):
+        """Animate the widget to `size` over the time of 1 second
+        """
         animation = Animation(size=(size, size), t='in_cubic', duration=1)
         animation.start(self)
         tick = schedule_tick(self.tick)
         Clock.schedule_once(lambda dt: Clock.unschedule(tick), 2)
 
     def tick(self, dt):
+        """Redraw the widget (kivy won't update it automatically)
+        """
         size = self.size[0]
         self.canvas.clear()
         with self.canvas:
@@ -77,6 +99,10 @@ class BallSource(Widget):
         return (px - x) ** 2 + (py - y) ** 2 < sx ** 2
 
 class TickingWidget(Widget):
+    """A widget that calls its tick() method on each frame.
+
+    Be sure to remove it from the widget hierarchy when it's done.
+    """
     def __init__(self, **kwargs):
         super(TickingWidget, self).__init__(**kwargs)
         self._tick = None
@@ -90,9 +116,21 @@ class TickingWidget(Widget):
             self._tick = schedule_tick(self.tick)
 
     def tick(self, dt):
+        """The base class implementation redraws the widget's canvas.
+        """
         self.canvas.ask_update()
 
 class Ball(TickingWidget):
+    """The ball that the solver moves through the maze.
+
+    The ball has two collision-detection methods: the standard collide_point()
+    for the area where the ball accepts touches, and collide_zoc() for the
+    “zone of control”. The zone of coltrol grows when the ball is touched, and
+    shrinks when the touch is released.
+
+    When touched, the ball will move towards the touch at BALL_SPEED tiles per
+    second (but maze walls will block it).
+    """
     def __init__(self, parent, **kwargs):
         super(Ball, self).__init__(**kwargs)
         self.touch_uid = None
@@ -131,6 +169,8 @@ class Ball(TickingWidget):
     def tick(self, dt):
         if not self.parent:
             return
+        # Try to cover the required distance. But if it's not done in 50
+        # iterations, give up.
         remaining_distance = dt * BALL_SPEED * self.parent.cell_size
         for i in range(50):
             if remaining_distance <= 0.01 or self.pos == self.target_pos:
@@ -140,17 +180,31 @@ class Ball(TickingWidget):
                 break
             remaining_distance -= distance_covered
         if self.translation_instruction.xy != self.pos:
+            # Update the canvas if the ball moved
             self.translation_instruction.xy = self.pos
             self.canvas.ask_update()
         if self.scale_instruction.scale != self.zoc_radius:
+            # Update the canvas if the ZOC was resized
             self.scale_instruction.scale = self.zoc_radius
             self.canvas.ask_update()
         if not self.parent.ball_source.collide_point(*self.pos):
+            # If the ball is outside the initial area, add time to the player's
+            # clock
             self.parent.add_time(dt)
         if self.x < self.parent.cell_size:
+            # IF the ball is in the goal area, the round ends
             self.parent.win()
 
     def move_step(self, remaining_distance):
+        """Move a little towards the touch position, return distance covered
+
+        `remaining_distance` is the maximum distance to move
+
+        This implements one iteration of the moving, and is called enough times
+        for the sum of the returned values is big enough.
+
+        Both remaining_distance and the return value are in pixels, not tiles.
+        """
         radius = self.radius
         pos = numpy.array(self.pos)
         # The distance we want to cover
@@ -162,7 +216,7 @@ class Ball(TickingWidget):
             delta = delta / distance * max_distance
             distance = max_distance
         pos += delta
-        # Now, we will deal with tile coordinates instead of pixels
+        # From now, we will deal with tile coordinates instead of pixels
         tile_coord = numpy.array(self.parent.pixel_to_tile(pos))
         tile_radius = self.parent.pixel_to_tile((radius, radius))
         # Check the upper/lower & left/right points of the circle
@@ -183,8 +237,8 @@ class Ball(TickingWidget):
             vector_to_corner = corner - tile_coord
             # If part of the ball is inside a corner wall, push it back
             # XXX: This doesn't take into account that the ball can be slightly
-            # elliptical in tile coordinates. (This isn't likely to matter 
-            # anyway, though.)
+            # elliptical in tile coordinates. (This isn't likely to matter,
+            # though.)
             avg_radius = sum(tile_radius) / 2
             if sum(vector_to_corner ** 2) < avg_radius ** 2:
                 distance_to_corner = numpy.sqrt(sum(vector_to_corner ** 2))
@@ -197,6 +251,10 @@ class Ball(TickingWidget):
         return distance
 
     def on_touch_down(self, touch, force=False):
+        """Called for a new touch
+
+        `force`: don't check that the touch is near the ball; assume it is.
+        """
         if force or self.collide_point(touch.x, touch.y):
             if self.touch_uid:
                 self.touch_uid = None
@@ -222,10 +280,25 @@ class Ball(TickingWidget):
             return True
 
 class Builder(Widget):
+    """The “line” for modifying the maze
+
+    Follows a touch, and either builds or destroys corridors (based on the
+    `build` argument). Disappears on touch up.
+
+    The line is either green (for building) or red (for destroying).
+    If the line goes through a ball zone of control, it is inactive (no
+    building/destroying). This is indicated graphically by turning the line
+    gray. The inactive part stays gray even if the ball is moved.
+
+    The line is kept at a maximum length, by fading out the “tail”.
+    """
     def __init__(self, build, **kwargs):
         super(Builder, self).__init__(**kwargs)
+        # points: a list of (x, y, active) triples
         self.points = [(self.pos[0], self.pos[1], True)]
+        # build: True for building, False for destroying
         self.build = build
+        # opacity: animated to 0 for a fade-out
         self.opacity = 1
 
     def on_touch_down(self, touch, force=False):
@@ -241,20 +314,19 @@ class Builder(Widget):
             old_x, old_y, old_active = self.points[-1]
             parent = self.parent
             for x, y in calculate_points(old_x, old_y, touch.x, touch.y,
-                    steps=3):
+                    spacing=3):
                 ok = True
                 for ball in self.parent.balls:
                     if ball.collide_zoc(x, y):
                         ok = False
                         break
-                if not ok:
-                    self.points.append((x, y, False))
-                    continue
-                else:
-                    self.points.append((x, y, True))
+                self.points.append((x, y, ok))
+                if ok:
                     tile_coord = parent.pixel_to_tile((x, y))
                     int_tile = int(tile_coord[0]), int(tile_coord[1])
+                    # Try building/destroying
                     if parent.set_wall(int_tile, self.build):
+                        # Successful change to the maze, show some SFX
                         particle_shower(
                                 parent=self.parent,
                                 type='build' if self.build else 'destroy',
@@ -263,12 +335,17 @@ class Builder(Widget):
                                         int_tile[1] + 0.5,
                                     )),
                             )
+            # Trim the line to the max length
             max_points = self.max_points
             self.points = self.points[-max_points:]
             self.redraw()
             return True
 
     def on_touch_up(self, touch):
+        """Destroy the widget when the touch disappears.
+
+        Includes a fade-out animation.
+        """
         if self.touch_uid == touch.uid:
             Animation(opacity=0, duration=0.25).start(self)
             tick = schedule_tick(self.redraw)
@@ -280,6 +357,8 @@ class Builder(Widget):
             return True
 
     def redraw(self, dt=None):
+        """Redraw the whole line
+        """
         self.canvas.clear()
         if self.build:
             r, g = 0, 1
@@ -296,6 +375,23 @@ class Builder(Widget):
                 Point(points=(x, y), pointsize=5, source='particle.png')
 
 class BuildLoop(TickingWidget):
+    """A widget that allows a player to draw a loop to begin modifying the maze
+
+    Represented by a ring of dots spinning around the starting point, and a
+    line traced by the touch. The color of these changes from yellow to green
+    or red depending on the direction of the loop being drawn.
+
+    Once the touch returns to the starting position, and the loop is
+    sufficiently big, a corresponding Builder is created at that position.
+
+    The game needs to know the orientation and area of the loop, and the player
+    can draw arbitrary polygons instead of plain loops. A simple formula for
+    the signed area of a polygon[1] is used, which works very well for both
+    “proper” loops and any convex or self-intersecting drawings the player
+    might draw.
+
+    [1] http://mathworld.wolfram.com/PolygonArea.html
+    """
     def __init__(self, spin, **kwargs):
         super(BuildLoop, self).__init__(**kwargs)
         self.spin = spin
@@ -311,6 +407,7 @@ class BuildLoop(TickingWidget):
             with self.canvas.after:
                 PopMatrix()
             with self.canvas:
+                # Create the ring of “satellite” points
                 self.color_instruction = Color(1, 1, 0, 0)
                 self.points = Point(points=self.pos, pointsize=5,
                     source='particle.png')
@@ -328,10 +425,12 @@ class BuildLoop(TickingWidget):
                         ])
                 Point(points=satellites, pointsize=0.2, source='particle2.png')
 
+            # A scale-in animation
             animation = Animation(scale=self.parent.cell_size / 3 * 2,
                     t='out_cubic', duration=0.2)
             animation.start(self.scale_instruction)
 
+            # A fade-in animation
             animation = Animation(a=0.8, t='out_cubic', duration=0.2)
             animation.start(self.color_instruction)
 
@@ -344,12 +443,15 @@ class BuildLoop(TickingWidget):
         if self.touch_uid == touch.uid:
             points = self.points.points
             oldx, oldy = points[-2], points[-1]
-            points = calculate_points(oldx, oldy, touch.x, touch.y, steps=3)
+            points = calculate_points(oldx, oldy, touch.x, touch.y, spacing=3)
             if points:
                 add_point = self.points.add_point
                 for x, y in points:
                     add_point(x, y)
 
+            # Calculate the area of the polygon being drawn (closing it with
+            # a line from end to beginning); the sign of the result represents
+            # the orientation.
             signed_area = sum(
                     x1 * y2 - x2 * y1
                     for (x1, y1), (x2, y2)
@@ -359,22 +461,29 @@ class BuildLoop(TickingWidget):
                                 self.points.points[:2], 2),
                         )
                 ) / 2
-            square_unit = self.parent.cell_width * self.parent.cell_height
-            area_in_squares = signed_area / square_unit
-            done = area_in_squares / MIN_LOOP_AREA
-            if area_in_squares < 0:
+            # Compute the area in tiles²
+            tile_square_unit = self.parent.cell_width * self.parent.cell_height
+            area_in_tiles = signed_area / tile_square_unit
+            # `done`: the percentage to which the loop is done; signed as above
+            done = area_in_tiles / MIN_LOOP_AREA
+            if done < 0:
+                # Clockwise loop; green
                 if done < -1:
                     done = -1
                 color = 1 + done, 1, 0
             else:
+                # Counter-clockwise loop; red
                 if done > 1:
                     done = 1
                 color = 1, 1 - done, 0
+            # Set the color
             self.color_instruction.rgb = color
+            # Check if we're back at the starting tile with a big enough loop
             if abs(done) == 1:
                 x, y = self.parent.pixel_to_tile(self.pos)
                 end_x, end_y = self.parent.pixel_to_tile(touch.pos)
                 if int(x) == int(end_x) and int(y) == int(end_y):
+                    # Create a builder
                     touch.ungrab(self)
                     builder = Builder(pos=self.pos, build=done < 0)
                     self.parent.add_widget(builder)
@@ -390,22 +499,29 @@ class BuildLoop(TickingWidget):
             return True
 
     def die(self):
+        """Ending animation and destruction of the widget
+        """
+        # Scale-out animation
         animation = Animation(scale=self.parent.cell_size * 15,
                 t='in_cubic', duration=0.15)
         animation.start(self.scale_instruction)
 
+        # Fade-out animation
         animation = Animation(a=0, duration=0.15)
         animation.start(self.color_instruction)
 
+        # Disown the widget
         def _die(dt):
             if self.parent:
                 self.parent.remove_widget(self)
         Clock.schedule_once(_die, 0.15)
 
-    def tick(self, dt):
-        self.canvas.ask_update()
-
 class MazeBoard(TickingWidget):
+    """A maze for a single turn in the game
+
+    MazeBoard contains the maze. Balls and builders are child widgets of a
+    MazeBoard.
+    """
     darkWalls = True
 
     def __init__(self):
@@ -419,19 +535,33 @@ class MazeBoard(TickingWidget):
         self.initialized = True
 
         win = self.get_parent_window()
+
+        # `window_width` & `window_height`: dimensions of the window, in pixels
         self.window_width = win.width
         self.window_height = win.height
 
+        # `matrix`: the matrix holding the maze. Values in this matrix are:
+        # - nonnegative numbers: corridors; the value represents the shortest
+        #   distance to the exit (these will be set using set_walls later)
+        # -1: regular (breakable) wall
+        # -2: perimeter (unbreakable) wall
+        # -3: exit
+        # -4: entrance
         self.matrix = -numpy.transpose(
                 numpy.array(create_maze(
                         self.window_width // MAZE_CELL_SIZE,
                         self.window_height // MAZE_CELL_SIZE,
                     ), dtype=numpy.int8)
             )
+        # `width`/`height`: size of the maze, in tiles
         self.width, self.height = self.matrix.shape
+        # `cell_width`/`cell_height`: size of a tile, in pixels
         self.cell_width = self.window_width / self.width
         self.cell_height = self.window_height / self.height
+        # `cell_size`: average size of a tile, as a scalar
         self.cell_size = (self.cell_width + self.cell_height) / 2
+
+        # Initialize perimeter walls and entrance/exit
         for x in range(self.width):
             self.matrix[x, 0] = self.matrix[x, self.height - 1] = -2
         for y in range(self.height):
@@ -439,26 +569,44 @@ class MazeBoard(TickingWidget):
         self.matrix[0, 1] = -3
         self.matrix[self.width - 1, self.height - 2] = -4
 
+        # `balls`: list of Ball widgets on this board
         self.balls = []
 
+        # `start_point`, `start_cranny`: Coordinates of the entrance and the
+        # tile next to it. (The corresponding coordinates for the exit are
+        # simply (0, 1) and (1, 1))
         self.start_point = self.width - 2, self.height - 2
         self.start_cranny = self.width - 1, self.height - 2
 
+        # `bdist`: same as `matrix` except positive numbers indicate shortest
+        #  distance to the entrance or nearest ball
+        # `dist`: ditto with shortest distance to just the entrance
         self.bdist = self.dist = self.matrix
         self.set_walls(self.matrix)
 
+        # Initialize the graphic representation
         self.background_canvas = Canvas()
         self.canvas.add(self.background_canvas)
         self.draw()
 
+        # Add the ball source (zero-sized initially)
         self.ball_source = BallSource(size=(0, 0),
                 pos=(self.window_width, self.window_height))
         self.add_widget(self.ball_source)
 
+        # Initialize the countdown for the solver
         Clock.schedule_once(lambda dt: self.countdown(COUNTDOWN_START), 1)
-        Clock.schedule_interval(self.redraw, 0.1)
+
+        # Redraw every 30th of a second
+        Clock.schedule_interval(self.redraw, 0.03)
 
     def countdown(self, num):
+        """The countdown for the solving player
+
+        For positive `num`, shows the number near the maze entrance, animates
+        it, and schedules a call to countdown(num-1) for one second.
+        For num == 0, display 'Go!', animate it, and grow the ball source.
+        """
         label = Label(
                 text=str(num) if num else 'Go!',
                 font_size=24,
@@ -487,13 +635,21 @@ class MazeBoard(TickingWidget):
                         u'Take a ball from the blue corner.')
 
     def add_time(self, time):
+        """Add time to the solving player's clock
+        """
         self.time += time
         if self.time > 15:
+            # If the player is taking a long time, display a (hopefully
+            # helpful) hint
             self.parent.set_message(True,
                     u"Take another ball if you're really stuck.")
         self.parent.add_time(time)
 
     def draw(self):
+        """Draw the board.
+
+        The colors are filled in later, in tick()
+        """
         self.colors = {}
         self.background_canvas.clear()
         with self.background_canvas:
@@ -507,9 +663,13 @@ class MazeBoard(TickingWidget):
         self.redraw()
 
     def redraw(self, dt=None):
+        """Called any time the maze's colors change
+        """
         self.must_redraw = True
 
     def tick(self, dt=None):
+        """Set all tile colors to the appropriate values
+        """
         if not self.must_redraw:
             return
         else:
@@ -523,13 +683,24 @@ class MazeBoard(TickingWidget):
         self.background_canvas.ask_update()
 
     def tile_color(self, x, y):
+        """Get the color for the tile at (x, y)
+        """
         if self.matrix[x, y] == -4:
+            # Entrance; same color as neighboring tile
             return self.tile_color(x - 1, y)
         elif self.matrix[x, y] == -3:
+            # Exit; same color as neighboring tile
             return self.tile_color(x + 1, y)
         elif self.matrix[x, y] < 0:
-            return 0, 0, 0, 0
+            # Wall, transparent black
+            if self.darkWalls:
+                return 0, 0, 0, 0
+            else:
+                # (with light walls; white)
+                return 1, 1, 1, 1
         else:
+            # Corridor; a light color based on distances to the entrance, exit
+            # and nearest ball
             m = self.matrix[x, y]
             d = self.dist[x, y]
             b = self.bdist[x, y]
@@ -543,10 +714,13 @@ class MazeBoard(TickingWidget):
                 a = (numpy.array((max(g, b), max(r, b), max(r, g), 0)) ** 8)
                 return 1 - a / 2
             else:
+                # (with light walls; a dark color)
                 return numpy.array((r, g, b, 1)) ** 8
 
     def set_walls(self, matrix):
-        """Set walls and solve the maze. No-op if maze is unsolvable
+        """Set walls and solve the maze. No-op if maze is unsolvable.
+
+        `matrix`: A 2D matrix with negative values for walls
         """
         mstart = numpy.zeros(matrix.shape + (3,), dtype=numpy.int32)
         mstart[self.start_point + (0,)] = mstart[(1, 1, 1)] = 1
@@ -565,10 +739,17 @@ class MazeBoard(TickingWidget):
         m = m[:, :, 0]
         self.matrix = numpy.select([matrix < 0, True], [matrix, m])
 
+        # Clear cache of unsuccessful building attempts
         self.build_tries = defaultdict(set)
         return True
 
     def set_wall(self, coord, create):
+        """Set (create== True) or destroy (create == False) a wall at coord
+
+        If the operation would create an unsolvable maze, nothing is done.
+        These unsuccessful attempts are cached in `build_tries` until the maze
+        is changed
+        """
         if coord in self.build_tries[create]:
             return False
         self.build_tries[create].add(coord)
@@ -576,9 +757,11 @@ class MazeBoard(TickingWidget):
             return False
         m = self.matrix.copy()
         if not create and self.matrix[coord] >= 0:
+            # Build a wall
             m[coord] = -1
             rv = self.set_walls(m)
         elif create and self.matrix[coord] == -1:
+            # Build a corridor
             m[coord] = 0
             rv = self.set_walls(m)
         else:
@@ -588,30 +771,44 @@ class MazeBoard(TickingWidget):
         return rv
 
     def pixel_to_tile(self, pos):
+        """Convert pixel coordinates to tile coordinates
+
+        Returns a pair of floats
+        """
         return (
                 pos[0] / self.cell_width,
                 pos[1] / self.cell_height,
             )
 
     def tile_to_pixel(self, tile_coord):
+        """Convert tile coordinates to pixel coordinates
+
+        Returns a pair of floats
+        """
         return (
                 float(tile_coord[0] * self.cell_width),
                 float(tile_coord[1] * self.cell_height),
             )
 
     def wall_at_pixel(self, pos):
+        """True if there is a wall at the specified pixel coordinates
+        """
         return self.wall_at_tile(self.pixel_to_tile(pos))
 
     def wall_at_tile(self, tile_coord):
+        """True if there is a wall at the specified tile coordinates
+        """
         try:
             tile_value = self.matrix[int(tile_coord[0]), int(tile_coord[1])]
         except IndexError:
+            # Outside of the maze – a wall
             return True
         else:
             return tile_value in (-1, -2)
 
     def on_touch_down(self, touch):
         for child in self.children[:]:
+            # Pass the event to children
             if child.dispatch('on_touch_down', touch):
                 return True
         if self.ball_source.collide_point(touch.x, touch.y):
@@ -641,6 +838,10 @@ class MazeBoard(TickingWidget):
                     "Loop clockwise to build corridors, CCW to destroy them.")
 
     def win(self):
+        """End the current round, destroy the widget.
+
+        Called when a ball reaches the goal area.
+        """
         for child in list(self.children):
             self.remove_widget(child)
         self.balls = []
@@ -648,32 +849,54 @@ class MazeBoard(TickingWidget):
         self.parent.win()
 
 class MazeGame(Widget):
+    """The top-level widget
+
+    Keeps stats about the game, and the current MazeBoard
+    """
     def __init__(self, **kwargs):
         super(MazeGame, self).__init__(**kwargs)
+        # `times`: the elapsed times of the players, or “negative scores”
         self.times = [0, 0]
+        # `current_solver`: index or the current solver (0 or 1)
         self.current_solver = 0
+        # `round_number`: no. of urrent round; a round is 2 turns
         self.round_number = 0
+        # `messages`: messages to the players
         self.messages = ['', '']
+
+        # Start the game
         self.start()
         self.fully_drawn = False
-        Clock.schedule_once(self.redraw, 1)
+        Clock.schedule_once(self.redraw)
 
     def set_message(self, for_solver, message):
+        """Set the message to a player.
+
+        If `for_solver` is True, sets the message to the solver, otherwise
+        to their opponent.
+        """
         self.messages[not for_solver ^ self.current_solver] = message
         self.redraw()
 
     def start(self):
+        """Start a turn, by creating a MazeBoard
+        """
         self.board = MazeBoard()
         self.add_widget(self.board)
         self.set_message(True, 'Wait...')
         self.set_message(False, 'Draw a loop to modify the maze.')
 
     def add_time(self, time):
+        """Add some time th the current solver's clock
+        """
         self.times[self.current_solver] += time
         self.redraw()
 
     def redraw(self, dt=None):
+        """Redraw the whole screen
+        """
         if not self.board.initialized:
+            Clock.schedule_once(self.redraw)
             return
         if not self.fully_drawn:
             self.full_redraw()
@@ -688,6 +911,8 @@ class MazeGame(Widget):
     tick = redraw
 
     def full_redraw(self):
+        """Draw the game's chrome
+        """
         self.reinit_before()
         self.time_labels = [[None, None], [None, None]]
         self.side_labels = [None, None]
@@ -697,9 +922,11 @@ class MazeGame(Widget):
             PushMatrix()
             cell_size = self.board.cell_size
             for edge in range(2):
+                # Messages at the non-player sides
                 Color(0, 0, 0, 0.5)
                 Rectangle(pos=(0, 0),
                         size=(self.board.window_width, cell_size))
+                # Turn number
                 turn_number = self.round_number * 2 + self.current_solver + 1
                 num_turns = NUM_ROUNDS * 2
                 if turn_number > num_turns:
@@ -709,6 +936,7 @@ class MazeGame(Widget):
                 l = Label(text=text,
                         pos=(0, 0), size=(self.board.window_width, cell_size),
                         fontsize=cell_size)
+                # Clocks
                 for player in range(2):
                     Color(1, 1, 1, 1)
                     l = Label(text=time_format(self.times[player]),
@@ -727,6 +955,7 @@ class MazeGame(Widget):
                         0,
                     )
                 Rotate(90, 0, 0, 1)
+                # Messages to the players
                 if edge ^ self.current_solver:
                     color = (0.7, 0.7, 0, 1)
                 else:
@@ -754,12 +983,15 @@ class MazeGame(Widget):
         self.fully_drawn = True
 
     def reinit_before(self, base_angle=None):
+        """Initialize the “before” canvas, i.e., whatever's below the MazeBoard
+        """
         cell_size = self.board.cell_size
         if base_angle is None:
             base_angle = 180 if self.current_solver else 0
         self.canvas.before.clear()
         with self.canvas.before:
             for player, rotation in enumerate((90, 270)):
+                # Win/lose messages at end of game
                 if self.round_number < NUM_ROUNDS:
                     text = ''
                 elif player ^ (self.times[0] < self.times[1]):
@@ -790,6 +1022,7 @@ class MazeGame(Widget):
                     self.board.window_height / 2,
                     0,
                 )
+            # Instructions for animating the board
             self.scale_instruction = Scale(1)
             self.rotate_instruction = Rotate(base_angle, 0, 0, 1)
             Translate(
@@ -799,6 +1032,9 @@ class MazeGame(Widget):
                 )
 
     def win(self):
+        """End one turn and start the next (if it wasn't the last turn
+        """
+        # Mostly animation code
         base_angle = 180 if self.current_solver else 0
         self.reinit_before(base_angle)
         animation = Animation(angle=base_angle + 90,
@@ -811,6 +1047,11 @@ class MazeGame(Widget):
                 self.board.window_height * self.current_solver,
             ))
         old_board = self.board
+        # Split the animation into a few functions: since generating the maze
+        # takes some time, we do it when the MazeBoard is not visible, and
+        # the animation to make it visible needs to start on the frame
+        # after it's generated, otherwise the first part of the animation
+        # would be effectively skipped.
         def next1(dt):
             if self.round_number < NUM_ROUNDS:
                 self.start()
@@ -839,7 +1080,9 @@ class MazeGame(Widget):
             self.current_solver = 1
         Clock.schedule_once(next1, 1)
 
-    def super_touch(self, func, touch):
+    def transform_touch(self, func, touch):
+        """Transform a touch if the game board is rotated
+        """
         touch.push()
         if self.current_solver and self.board and self.board.initialized:
             touch.x = self.board.window_width - touch.x
@@ -849,21 +1092,25 @@ class MazeGame(Widget):
         return rv
 
     def on_touch_down(self, touch):
-        self.super_touch(super(MazeGame, self).on_touch_down, touch)
+        self.transform_touch(super(MazeGame, self).on_touch_down, touch)
         return True
 
     def on_touch_move(self, touch):
-        self.super_touch(super(MazeGame, self).on_touch_move, touch)
+        self.transform_touch(super(MazeGame, self).on_touch_move, touch)
         return True
 
     def on_touch_up(self, touch):
-        self.super_touch(super(MazeGame, self).on_touch_up, touch)
+        self.transform_touch(super(MazeGame, self).on_touch_up, touch)
         return True
 
 def time_format(seconds):
+    """Format a time in seconds for the clock display (mm:ss.ss)
+    """
     return '{0:02.0f}:{1:05.2f}'.format(*divmod(seconds, 60))
 
 def particle_shower(parent, type, pos):
+    """Start a particle shower of the given type at the given position
+    """
     rand = random.random
     if type == 'build':
         color_start = lambda i: (rand(), 1, rand(), 0)
@@ -989,15 +1236,18 @@ def create_maze(width=81, height=51, complexity=0.975, density=0.975):
                     x, y = x_, y_
     return Z
 
-def calculate_points(x1, y1, x2, y2, steps=5):
-    # Adapted from the Kivy "touchtracer" example
+def calculate_points(x1, y1, x2, y2, spacing=5):
+    """Calculate equally spaced points along a line
+
+    Adapted from the Kivy "touchtracer" example
+    """
     dx = x2 - x1
     dy = y2 - y1
     dist = math.sqrt(dx * dx + dy * dy)
-    if dist < steps:
+    if dist < spacing:
         return ()
     o = []
-    m = dist / steps
+    m = dist / spacing
     for i in xrange(1, int(m)):
         mi = i / m
         lastx = x1 + dx * mi
