@@ -22,7 +22,8 @@ from kivy.animation import Animation
 from kivy.graphics.transformation import Matrix
 from kivy.graphics.instructions import Canvas
 
-from mazesolver import solvemaze
+from touchgames.mazesolver import solvemaze
+from touchgames.replay import Logger
 
 COUNTDOWN_START = 5
 MAZE_CELL_SIZE = 30
@@ -854,6 +855,7 @@ class MazeGame(Widget):
     Keeps stats about the game, and the current MazeBoard
     """
     def __init__(self, **kwargs):
+        numpy.random.seed(random.randint(0, 2**30))
         super(MazeGame, self).__init__(**kwargs)
         # `times`: the elapsed times of the players, or “negative scores”
         self.times = [0, 0]
@@ -1270,12 +1272,17 @@ def schedule_tick(f):
     return tick
 
 class MazeApp(App):
+    def __init__(self, replay=None):
+        super(MazeApp, self).__init__()
+
     def build(self):
-        parent = Widget()
+        parent = Logger()
         parent.add_widget(MazeGame())
 
         return parent
 
-
 if __name__ == '__main__':
+    # re-importing this file so the classes are pickle-able
+    # (otherwise they'd be pickled as  e.g. ‘__main__.MazeApp’ – useless)
+    from touchgames.maze import MazeApp
     MazeApp().run()
