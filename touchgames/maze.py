@@ -23,6 +23,7 @@ from kivy.graphics.transformation import Matrix
 from kivy.graphics.instructions import Canvas
 
 from touchgames.mazesolver import solvemaze
+from touchgames.util import FilledCircle, HollowCircle
 from touchgames.replay import Logger
 
 COUNTDOWN_START = 5
@@ -39,29 +40,6 @@ def yield_groups(source, n):
     For example, with n=2: 1, 2, 3, 4, 5, 6 -> (1, 2), (3, 4), (5, 6)
     """
     return itertools.izip(*[iter(source)] * n)
-
-def HollowCircle(pos, radius, segments=50):
-    """Draw a circle outline with the specified center and radius
-
-    Return the resulting kivy graphics instruction
-    """
-    points = list(itertools.chain(*tuple((
-                pos[0] + math.cos(t / segments * 2 * math.pi) * radius,
-                pos[1] + math.sin(t / segments * 2 * math.pi) * radius,
-            )
-            for t in range(0, segments + 1)
-        )))
-    return Line(points=points)
-
-def FilledCircle(pos=(0, 0), radius=1):
-    """Draw a filled circle with the specified center and radius
-
-    Return the resulting kivy graphics instruction
-    """
-    return Ellipse(
-            pos=(pos[0] - radius, pos[1] - radius),
-            size=(radius * 2, radius * 2),
-        )
 
 class BallSource(Widget):
     """The quarter-circle in the corner that balls are spawned from
