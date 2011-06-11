@@ -786,6 +786,8 @@ class MazeBoard(TickingWidget):
             return tile_value in (-1, -2)
 
     def on_touch_down(self, touch):
+        if not self.initialized:
+            return
         for child in self.children[:]:
             # Pass the event to children
             if child.dispatch('on_touch_down', touch):
@@ -1236,6 +1238,8 @@ def calculate_points(x1, y1, x2, y2, spacing=5):
     return o
 
 def schedule_tick(f):
+    """Schedule a “tick” function to be called each frame
+    """
     active = [True]
     def tick(dt):
         if not active:
@@ -1250,6 +1254,8 @@ def schedule_tick(f):
     return tick
 
 class MazeApp(App):
+    """The Kivy app for the maze game
+    """
     def __init__(self, replay=None):
         super(MazeApp, self).__init__()
 
