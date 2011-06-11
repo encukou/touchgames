@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 # Encoding: UTF-8
 
 from __future__ import division
@@ -768,8 +769,9 @@ class TowersGame(Widget):
                                 font_size=self.cell_size * 5,
                                 color=(1, 0, 0),
                             )
-                red = clamp(-self.funds[side] / (self.critter_hp * 10), 0, 1)
-                self.home_bar_colors[side].rgb = (1, 1 - red, 1 - red)
+                c_hp = self.critter_hp
+                red = clamp((self.funds[side] / 10) / c_hp, 0, 1)
+                self.home_bar_colors[side].rgb = (1, red, red)
             PopMatrix()
 
     def solvemaze(self):
@@ -801,9 +803,9 @@ class TowersGame(Widget):
         self.draw_labels()
 
         # If the player is very short on money, confiscate some towers.
-        # (very short means a debt of more than ten timer the HP of critters
-        # that are currently being sent out)
-        while self.funds[side] < -self.critter_hp * 10:
+        # (very short means a debt equal to the HP of critters that are
+        # currently being sent out — i.e. an increasing number)
+        while self.funds[side] < -self.critter_hp:
             towers = [((abs(t.pos[0] - self.window_width / 2), t.level), t)
                     for t in self.towers if t.side == side and t.level]
             if towers:

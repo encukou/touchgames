@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 # Encoding: UTF-8
 
 from __future__ import division

@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 # Encoding: UTF-8
 
 import cPickle as pickle
@@ -47,6 +48,7 @@ class Logger(Widget):
     def add_widget(self, child):
         super(Logger, self).add_widget(child)
         self.log('add_widget', type(child))
+        self.log('random', random.getstate())
 
     def on_touch_down(self, touch):
         self.log_touch('down', touch)
