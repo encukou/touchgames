@@ -1,0 +1,13 @@
+Games for a multitouch table.
+
+After installing dependencies (Kivy, Numpy, Cython), run
+`python setup.py install`, then try the games:
+
+maze.py: A two-player game where one player solves a maze while the other
+    modifies it.
+towers.py: Two-player tower defense -- hold out against an invasion for as long
+    as possible.
+
+For data collection purposes, all games are logged and can be replayed using
+`replay.py <logfile>` (given replay.py is started with the same parameters,
+e.g. screen size).
