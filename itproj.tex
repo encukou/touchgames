@@ -1,4 +1,4 @@
-\documentclass[a4paper,12pt]{article}
+\documentclass[a4paper,11pt]{article}
 %\usepackage{stdpage}
 \usepackage{microtype}
 \usepackage{tikz}
@@ -18,6 +18,34 @@
 
 \begin{document}
 
+\vspace*{3cm}
+
+\begin{center}
+{
+    \huge Games for a multi-touch table
+
+    \vspace{0.5em}
+
+    \large IT project
+}
+
+\vspace{3em}
+
+Petr Viktorin
+
+University of Eastern Finland
+
+2011
+\end{center}
+
+\vspace*{2.718\fill}
+
+\newpage
+
+\tableofcontents
+
+\newpage
+
 \section{Summary}
 
 This document describes the usage and implementation of two games for
@@ -25,43 +53,44 @@ multi-touch tables, Maze and Towers, a utility for replaying past games to
 help analyze players' behavior, and a multi-touch table built for testing the
 games.
 
-\subsection{Used Abbreviations}
+%\subsection{Used Abbreviations}
 
-FTIR: Frustrated total internal reflection
-LCD: Liquid crystal display
-LED: Light emitting diode
+% FTIR: Frustrated total internal reflection
+% LCD: Liquid crystal display
+% LED: Light emitting diode
+% RNG: Random number generator
 
 \section{Installation}
 
-Before software is installed, it is necessary to ensure that a multi-touch
-table is available.
-For “homemade” optical multitouch tables, such as the one described in
+Before software is installed, a multi-touch table must be available.
+For “homemade” optical multi-touch tables, such as the one described in
 section \ref{hw}, a TUIO server must also be installed and calibrated.
-Available open source TUIO servers include \emph{Community Core Vision} and
-Movid.
-% XXX: HOMEPAGES!
+Available open source TUIO servers include \emph{Community Core Vision}
+(\url{http://ccv.nuigroup.com/}) and
+Movid (\url{http://movid.org/}).
 Refer to the server's documentation for setup instructions for different
 operating systems.
 
 Before installing the games themselves, the following dependencies must be
-set up according to instructions on their respective home pages, depending
-on the operating system:
+set up.
+Again, refer to their respective home pages for installation instructions
+on various operating systems:
 
 \begin{itemize}
-\item Python (python.org)
-\item Setuptools % XXX: HOMEPAGE!
-\item Kivy (kivy.org)
-\item Cython % XXX: HOMEPAGE!
-\item Numpy % XXX: HOMEPAGE!
+\item Python (\url{python.org})
+\item Python Setuptools (\url{http://pypi.python.org/pypi/setuptools})
+\item Kivy (\url{http://kivy.org})
+\item Cython (\url{http://cython.org/})
+\item Numpy (\url{http://numpy.scipy.org/})
 \end{itemize}
 
-The dependencies are further desribed in section \ref{dependencies}.
+The dependencies are further described in section \ref{dependencies}.
 
-The games may be downloaded, or cloned using the version control system Git,
-from \url{http://github.com/encukou/touchgames}.
+The games may be downloaded from \url{http://github.com/encukou/touchgames}.
 
 After downloading, the games may be installed using the command
-\texttt{python setup.py install}.
+\texttt{python setup.py install} in the source directory.
+Installation may require administrator or super-user privileges on the system.
 
 \section{User manual}
 
@@ -72,16 +101,16 @@ The games and utility may be run as Python modules from the command line as
 script, respectively.
 
 Alternatively, on most operating systems it will be possible to double-click
-the game module (\texttt{maze.py} or \texttt{towers.py}) to run the
-corresponding game.
+the game module (the \texttt{maze.py} or \texttt{towers.py} file in the
+\texttt{touchgames} directory) to run the corresponding game.
 
 \subsection{Maze}
 
 The Maze game is played by two players, the \emph{Solver} and the
-\emph{Builder}. The game is divided into four turns; after each turn the roles
-are reversed.
+\emph{Builder}.
+Each game lasts four turns; after each turn the roles are reversed.
 Each turn played as a Solver is timed, and the player with the least total
-time on his or her clock is the overall winner.
+time on his or her clock at the end of the game is the overall winner.
 
 The players position themselves on opposite sides of the touch table.
 Brief instructions are given on each player's side, using blue text for the
@@ -89,11 +118,11 @@ Solver and yellow text for the Builder.
 On the remaining two sides of the table, clocks and the current turn number
 are displayed.
 The central area of the table is covered by a maze.
-The game's screen layout is shown in figure \ref{scsh-maze}.
+The game's screen layout is shown in figure~\ref{scsh-maze}.
 
-\begin{figure}[ht]\small
+\begin{figure}[ht]
     \includegraphics[width=13cm]{scsh-maze}
-\caption{Screenshot of the Maze game showing a loop being drawn and a ball
+\caption{Screen-shot of the Maze game showing a loop being drawn and a ball
 being dragged}
 \label{scsh-maze}
 \end{figure}
@@ -107,11 +136,11 @@ corner.
 By touching the ball source, a small \emph{ball} is created and can be
 immediately dragged out.
 
-Aroun the ball is the ball's \emph{handle}.
+Around the ball is a circular area called the ball's \emph{handle}.
 When the Solver touches the handle, the ball moves towards the touch with a
 fixed speed, even if the touch moves, unless a maze wall prevents the movement.
 
-Whene a ball is touched, a large circular area forms around it.
+Whenever a ball is touched, a large circular area forms around it.
 This is the ball's \emph{zone of control}.
 When a ball is not touched, the zone of control shrinks to the size of the
 ball's handle.
@@ -123,8 +152,8 @@ Against experienced opponents, it may be necessary to create a few balls and
 use their zones of control to effectively limit the Builder's actions.
 
 For each ball on the table, time is added to the Solver's \emph{clock}.
-For example, with one ball, the clock time increases by one second each second.
-If two balls are out, two seconds are added with each second of real time.
+For example, if two balls are out, two seconds are added with each second of
+real time.
 
 The Solver's goal is to navigate a ball through the maze into the \emph{exit
 area} in the Builder's right-hand corner of the table with as little time
@@ -141,7 +170,7 @@ Conversely, corridors can be destroyed (and walls built) by drawing a
 counterclockwise loop.
 As a loop is drawn it changes color from yellow to red or green, for destroying
 and building corridors, respectively.
-After finishing a loop, the builder can drag the finger aross more tiles
+After finishing a loop, the builder can drag the finger across more tiles
 to continue building or destroying.
 
 There are limits to building.
@@ -155,8 +184,8 @@ Also, the Builder cannot play in a ball's zone of control.
 
 Usually, each maze is initially very easy, with at least one obvious way
 around the maze's perimeter.
-The Builder is given five seconds at the start of the turn to block such
-obvious solutions and generally to make the maze as difficult as possible.
+The Builder is given five seconds at the start of the turn for a chance to
+block such obvious solutions.
 
 \subsubsection{Fair play}
 
@@ -177,8 +206,8 @@ towers.
 Touching empty space or a tower triggers a menu with options to build, upgrade,
 and/or sell a tower.
 
-While the above instructions is all players need to know to play the game,
-the next section decsribes the mechanics further.
+While the above instructions is all players initially need to know to play the
+game, the next section describes the mechanics further.
 
 \subsubsection{Game Control and Mechanics}
 
@@ -186,18 +215,20 @@ On each player's side is a white strip called the \emph{home area}. The amount
 of a player's money is shown on the home area.
 Small circular entities called \emph{critters} are spawned in the middle of the
 screen and move towards each player's home area.
-Critters are spawned with an increasing amount of \emph{hit points (HP)} and
-in shortening intervals.
+Each “generation” of critters has a higher amount of \emph{hit points (HP)}
+than the previous one, and critters are created in shortening intervals.
 This makes the game progressively more difficult as time passes.
 
-\begin{figure}[ht]\small
+\begin{figure}[hb]
     \includegraphics[width=13cm]{scsh-towers}
-\caption{Screen of the Towers game showing an upgrade menu, critters and towers}
+\caption{Screen of the Towers game showing an upgrade menu, critters and towers.
+        Two towers that were upgraded for a greater range are firing at a critter.}
+\hspace{1em}
 \label{scsh-towers}
 \end{figure}
 
 Once a critter reaches the home area, the player's money is continually
-decreased and the critter loses its HP, until its HP drops to zero and the
+decreased and the critter loses its HP, until the HP drops to zero and the
 critter is eliminated.
 Critters change color from blue to red as they lose HP.
 
@@ -224,7 +255,7 @@ Heavily damaged critters, and those close to the tower, are favored as targets.
 The game does not prevent “stealing kills” by shooting critters in the
 opponent's half of the screen, however this practice requires towers with a
 long range and a lack of better targets at the player's own field, so it is
-difficult to pull off.
+difficult to accomplish.
 Nevertheless, money is always awarded to the owner of the tower that deals the
 “finishing blow”.
 
@@ -247,8 +278,8 @@ except the tower is not destroyed if the upgrade is cancelled.
 Upon completion of an upgrade, the tower's \emph{level} increases, which
 increases the tower's range and causes the tower to fire more rapidly and deal
 more damage with each shot.
-A tower's level is indicated graphically by small triangles or a square on the
-tower.
+A tower's level is indicated graphically by small white triangles or a square
+on the tower.
 After a maximum level is reached, a tower may not be upgraded further.
 
 Selecting the Sell option on the upgrade menu causes the tower to disappear
@@ -261,35 +292,38 @@ If there are no towers to sell, the player loses the game.
 The player that does not lose – or would lose after his or her opponent – wins.
 
 (It may be noted that once a player starts losing towers due to debt, there is
-generally no way to stop losing more.
+usually no way to stop losing them.
 The automatic selling of towers is a way of taking the “tower capital” into
 account when determining win and loss, and providing a final “your empire is
 crumbling” animation.)
 
+Figure~\ref{scsh-towers} shows the game screen and visual elements.
 
 \subsection{Replay}
 
 All games are recorded. Whenever a game is run, a log file is created in the
-current diectory.
+current directory.
 Using the replay script, a recorded game can be played back by giving the log
-filename as a command-line parameter.
-The replay script must be started with the same Kivy arguments (e.g. window
+filename as a command line parameter.
+The replay script must be started with the same parameters (e.g. window
 size) as the original game.
+Touching the replay window allows the user to slow down or speed up the replay.
+A label showing the current speed is shown when the window is touched.
 
-This allows the user to analyze past games and study players' behavior and
+Replaying allows the user to analyze past games and study players' behavior and
 strategies.
 
 \section{System description}
 
-\subsection{Libraries and supporting software}
+\subsection{External Libraries and Supporting Software}
 \label{dependencies}
 
-The multitouch games use several pre-existing pieces of software to work.
+The multi-touch games use several pre-existing pieces of software to work.
 
 \subsubsection{Python}
 
 The games are implemented in Python, a dynamic, interpreted programming
-language designed for code readibility and ease of development.
+language designed for code readability and ease of development.
 
 The games were written using Python version 2.6 and are compatible with
 the current version, 2.7.
@@ -299,20 +333,18 @@ Kivy) do not yet support it.
 
 \subsubsection{Kivy}
 
-Kivy is the main library used for multitouch input and the graphical user
-interface.
+Kivy is the main library used for multi-touch input and the graphics.
 
-The Kivy library provides an uniform interface to many multitouch
-\emph{providers}, such as native Windows, Linux and Mac OS multitouch API and
+The Kivy library provides an uniform interface to many multi-touch
+\emph{providers}, such as native Windows, Linux and Mac OS multi-touch API and
 the TUIO protocol (described later).
 It also provides a wrapper for the OpenGL ES library for drawing, and utilities
 for creating windows, playing simple animations and timing events.
 
-The games were first drafted using Kivy's predecerror, PyMT, which is
+The games were first drafted using Kivy's predecessor, PyMT, which is
 no longer actively developed.
 
 \subsubsection{Numpy and Cython}
-
 
 Python is an interpreted language focused on code clarity, dynamic features,
 and implementation elegance, rather than speed.
@@ -321,17 +353,17 @@ which is a processor-intensive task that plain Python is too slow for.
 
 Readers familiar with Matlab or other scientific packages will be familiar with
 this problem and its solution: high-level code is written in an interpreted
-language, and low-level tasks are delegated to optimized routines written in
-another language, such as C, and compiled to machine code.
-In the case of multitouch games, these low-level tasks include drawing on the
+language, and low-level tasks or tight loops are delegated to optimized
+routines written in another language, such as C, and compiled to machine code.
+In the case of multi-touch games, these low-level tasks include drawing on the
 screen and maze solving.
 Drawing is handled by the PyMT library, which uses Cython to interface with
 the OpenGL ES library.
 For maze solving in the games, a function was written using Numpy and Cython.
 
-Numpy is a Python library designed for numerical computations and working
-with matrices.
-The games use Numpy's efficient matrix type to store the maze.
+Numpy is a Python extension library designed for numerical computations and
+working with matrices.
+The games use Numpy's efficient matrix type to store the maze or playing area.
 
 Cython is a language similar to Python which can be compiled to C, and then to
 native machine code.
@@ -344,27 +376,118 @@ Cython speeds up the code by several orders of magnitude.
 
 % XXX: TUIO: Kaltenbrunner, M., Bovermann, T., Bencina, R., Costanza, E.: "TUIO - A Protocol for Table Based Tangible User Interfaces". Proceedings of the 6th International Workshop on Gesture in Human-Computer Interaction and Simulation (GW 2005), Vannes, France, 2005
 
-For multitouch devices with operating system support, no extra
+For multi-touch devices with operating system support, no extra
 software is necessary: the PyMT library only requires some configuration.
-For “home-made” optical touchscreens, such as the
-one described in section \ref{hw}, a TUIO server like Communuty Core Vision
+For “home-made” optical touch screens, such as the
+one described in section \ref{hw}, a TUIO server like Community Core Vision
 or Movid is required.
 This server analyzes the picture from the touchscren's camera, detects light
 \emph{blobs} that correspond to finger touches, and sends messages about the
 state of the touches through a TCP/IP network to client applications such as
 the games.
 
-TUIO is a protocol designed for providing realtime information about input
-events for tangible user interfaces.
-It is based on OSC, the Open Sound Control protocol.
+TUIO itself is a public domain binary protocol designed for providing real-time
+information about input events for tangible user interfaces.
+It is based on the Open Sound Control protocol (OSC).
 
 \subsection{Games}
+
+This section describes the directory structure, development instructions,
+general structure and major algorithms used in the touch games themselves.
+
+\subsubsection{Directory Structure}
+
+The project is organized as a standard Python package
+The root directory of the source contains the \texttt{setup.py} script, which
+is used for installing the package, \texttt{README} and \texttt{LICENSE} files
+that give brief information about the project, and a \texttt{.gitignore} file
+that controls the version control system, Git.
+
+The game code itself is included within the \texttt{touchgames} directory.
+\texttt{maze.py}, \texttt{towers.py} and \texttt{replay.py} are executable
+scripts containing code specific to the respective games or functionality.
+The \texttt{replay.py} module also contains logging code.
+The \texttt{util.py} module contains helper functions used in both games.
+The \texttt{fastsolver.pyx} and \texttt{mazesolver.py} files contain the maze
+solving routine and helper loading code for it, respectively.
+
+A few PNG images used as particles for animations are also included.
+
+\subsubsection{Development Instructions}
+
+The project uses the Git distributed version control system to keep track of
+revisions and changes.
+For working on the code, it may be helpful to install Git and \emph{clone}
+the repository from \texttt{git://github.com/encukou/touchgames}.
+If any modifications are made, the author of the modification is asked to
+record the changes in Git and make them publicly available, preferably as a
+“fork” on the code-hosting site \url{http://github.com}.
+This site also hosts a bug tracking system for the project.
+
+At the beginning of the game modules, parameters that can be easily changed,
+such as ball/critter speed or tile size, are defined.
+They are named using all capital letters.
+Note that changing these parameters will invalidate any replay logs.
+
+The code generally adheres to the Python style guide known as PEP 8, available
+at \url{http://www.python.org/dev/peps/pep-0008/}.
+
+\subsubsection{Widgets and Drawing}
+
+The games use Kivy's widget model.
+Game objects – balls, critters, towers, the games themselves etc. – are
+represented as widgets.
+Each widget object is responsible for both its behavior and appearance.
+Aside from widgets, each game defines a few specialized functions
+and a short piece of boilerplate needed to set up logging and run the game.
+
+Most widgets have \texttt{\_\_init\_\_} and/or \texttt{initialize} methods that
+initialize the widget.
+While \texttt{\_\_init\_\_} is called automatically at object initialization
+time, the widget only has access to the game's window (and window size) after
+the widget has been assigned to a parent widget. This is why a separate
+\texttt{initialize} method is needed.
+\texttt{initialize} is usually invoked in the frame after object creation
+using Kivy's Clock utility.
+
+The \texttt{on\_touch\_down}, \texttt{on\_touch\_move} and
+\texttt{on\_touch\_up} methods are Kivy event handlers that are called whenever
+an input event occurs.
+Often when a new widget is made in a parent widget's touch-down event handler,
+the new widget's \texttt{on\_touch\_down} is called with the current touch
+to effectively “pass the event through”.
+Some widgets have a \texttt{tick} method that is scheduled to run at each
+frame.
+All methods are documented using Python docstrings, either in the method
+itself or in a superclass implementation.
+
+Widgets are drawn using Kivy's basic drawing commands, such as Color
+(“set color”), Rectangle, Line, or Ellipse.
+Drawing happens on each widget's Kivy \emph{canvas}.
+The parameters of graphic instructions may be modified or animated, but after
+a modification, the widget's canvas must be updated. For animations, the canvas
+must be updated in each frame.
+Partially transparent colors are used for overlays such as the circular
+progress bar in Towers.
+
+The games make heavy use of OpenGL matrix operations:
+when drawing towers, critters, most text labels and some animations,
+the view matrix is modified to essentially scale, rotate and translate the
+drawing coordinate system, then the graphics object is drawn at the origin
+with a normal orientation and scale.
+
+This approach simplifies some calculations, such as figuring out coordinates
+of a critter's eyes.
+It also makes it easier to animate objects, such as rotating and zooming
+the Maze game board between turns or “exploding” a critter.
+In these cases, only the matrix operations are animated, while the rest of
+the drawing operations remain the same.
 
 \subsubsection{Maze-solving algorithm}
 
 Both games use a maze-solving algorithm.
 In Maze, it is used to ensure that the maze is solvable.
-In Towers, it is used to find tohe shortest path that each critter should
+In Towers, it is used to find the shortest path that each critter should
 follow, and also to make sure that players do not cut parts of the playing
 field off when building towers.
 
@@ -381,41 +504,41 @@ path from that cell, or failure if there are cells from which a goal is not
 reachable.
 
 The algorithm works by assigning a zero value to goal cells in the output
-matirix, and a very large value to all others.
+matrix, and a very large value to all others.
 Then, it iteratively assigns to each corridor cell the lowest value from all
 neighboring corridor cells, increased by the cost of going through that cell.
 When the values no longer change, the algorithm ends.
 If there are any corridor cells with the original large value, they are
-unreachable and the algorithm rerurns a failure.
+unreachable and the algorithm returns a failure.
 Otherwise it returns the resulting output matrix.
 
 To find the shortest path from a cell in this output matrix, one should visit
 the neighboring cell with the lowest value, and then recursively ind the
 shortest path from it until arriving at a goal cell.
 
-
 The time complexity of this algorithm is $O(MNL)$, where $M \times N$ is the
 size of the maze and $L$ is the length of the longest of the shortest paths.
-Compared to Dijkstra's shortest-path finding algorithm, it may seem very
-inefficient, but the mazes in the games are small enough that this does not
-matter – after all, they should be easily solvable by humans.
+Compared to, for example, Dijkstra's shortest-path finding algorithm, it may
+seem very inefficient, but the mazes in the games are small enough that this
+does not matter – after all, they should be easily solvable by humans.
 Furthermore, the algorithm only uses static data structures, so there is
-no overhead from maintaining and travesing sets or heaps.
+no overhead from maintaining and traversing sets or heaps.
 
 \subsubsection{Collision detection}
 
-% XXX: Make sure this is after the explanation of frames
 To prevent the ball from going through walls in the Maze game, its position
-is checked every frame and whenever it moes more than by a half of its radius.
+is checked every frame and whenever it moves more than by a half of its radius.
 
 First, the game checks whether the top, bottom, left and right points are
 inside a wall, and moves the ball out of the wall if necessary.
 
 Next, a possible corner closest to the center of the ball is checked.
 If there is a wall “behind” it, the game checks if the corner is inside the ball
-and agains moves the ball out of the wall if necessary.
+and again moves the ball out of the wall if necessary.
 
-\begin{figure}[ht]\small
+Figure~\ref{fig:collision-detection} illustrates the two collision checks.
+
+\begin{figure}[ht]
 \subfloat[First collision check with the left point of the ball inside a wall]{
     \begin{tikzpicture}[x=10mm,y=10mm]
 
@@ -437,7 +560,6 @@ and agains moves the ball out of the wall if necessary.
 }
 \hspace{1em}
 \subfloat[Second collision check with the ball colliding with a wall corner]{
-    \hspace{3em}
     \begin{tikzpicture}[x=10mm,y=10mm]
 
     % Wall
@@ -478,16 +600,118 @@ and agains moves the ball out of the wall if necessary.
 
     \end{tikzpicture}
 }
-\label{fig:collision-detection}
 \caption{Ball collision detection}
+\label{fig:collision-detection}
 \end{figure}
+
+\subsubsection{Logging and Replaying}
+
+Game logging works by recording which game is played, the state of the random
+number generator (RNG), all touch events, and clock ticks.
+
+The logger utilizes Python's \texttt{pickle} module, which allows serializing
+arbitrary objects.
+“Pickled” messages are compressed and written to a log file, each prefixed by
+a short string that names the type of the message.
+
+The first message written is the initial state of the RNG.
+Python uses the Mersenne Twister, a pseudo-random number generator whose state
+can be stored and later restored to provide an identical sequence of
+pseudo-random numbers.
+
+The second message written to the log file is the class of the main game
+widget.
+This allows the replay script to play either a Maze or a Towers game,
+as well as any game written in the future that uses the logging system.
+The only requirement is that the game may not use any input or sources of
+non-determinism other than what is logged.
+
+After the two initial messages, clock ticks and touch events are recorded as
+they happen.
+
+Kivy provides a Clock utility that allows scheduling events and animations.
+These events, as well as all graphics, are handled at discrete points in time
+called \emph{frames}.
+Usually the games run roughly at a fixed frame rate.
+In the default Kivy configuration, this is 30 frames per second (FPS).
+If processing of a frame takes too much time, the frame rate may drop.
+Since some of the game logic depends in subtle ways on the exact points in time
+when frames are handled, every frame causes a message containing the time from
+the previous frame to be logged.
+
+Finally, whenever an input event occurs, its parameters recorded as well.
+Kivy provides three types of touch events: \emph{touch down}, which occurs
+whenever a finger touches the surface, \emph{touch move}, which is fired when
+a finger already touching the surface is moved, and \emph{touch up}, which
+occurs when a finger is lifted.
+Each touch has properties such as current position, previous position, and a
+unique ID.
+All of these properties are recorded when an input event occurs.
+
+When a game is replayed from a log file, the events are read back from the
+file, “unpickled”, and processed according to their type.
+Meanwhile, all normal touch input (i.e. actual touches, not events from the
+log), is redirected to speed up or slow down the replay,
+instead of controlling the game.
+Because Kivy's Clock utility only uses the real system time, the clock module
+is modified while the replay runs to use a customized function of Python's
+\texttt{time.time}.
+This function synchronizes the clock tick messages and the real clock time.
 
 \section{Hardware}
 \label{hw}
 
 As part of the IT project, a prototype touchscreen was built.
+This section describes the design, operation, and flaws of the touchscreen.
 
-\subsection{Operation and construction}
+Figure~\ref{fig:hw-schem} shows a diagram of the touchscreen, and
+figure~\ref{fig:hw-photos} shows photos of the finished table.
+
+\begin{figure}[p]
+\begin{tikzpicture}[x=4mm,y=4mm,scale=0.93]
+\draw (-.5,0) rectangle (20.5,.5); % acrylic
+\draw (-1,0) rectangle (0,-20); % front wood
+\draw (20,0) rectangle (21,-20); % back wood
+\draw (0,-19) rectangle (20,-20); % bottom wood
+\draw (1,-.1) rectangle (19,-.3); % LCD
+\draw (1,-.4) rectangle (19,-.5); % diffuser
+\draw (1.1,-17) -- (18.9,-17) -- (18,-18.9) -- (2,-18.9) -- cycle; % backlight
+\draw (9.5,-16.5) rectangle (10.5,-17.3); % camera lens
+\draw (8,-17.3) rectangle (13,-17.5); % camera body
+
+\draw (-1,.1) -- (-.75,.1) arc (-90:90:.15) -- (-1,.4) -- cycle; % LED 1
+\begin{scope}[xscale=-1,xshift=-80mm]
+\draw (-1,.1) -- (-.75,.1) arc (-90:90:.15) -- (-1,.4) -- cycle; % LED 2
+\end{scope}
+
+\draw (20,.25) -- (22,2.2) -- (25,2.2) node[right] {Acrylic glass};
+\draw (20.75,.25) -- (22,1) -- (25,1) node[right] {IR LEDs};
+\draw (18.75,-.2) -- (22,-.2) -- (25,-.2) node[right] {LCD};
+\draw (18.75,-.45) -- (22,-1.4) -- (25,-1.4) node[right] {Diffuser};
+\draw (20.5,-10) -- (25,-10) node[right] {Wooden chassis};
+\draw (10,-16.75) -- (12,-15) -- (25,-15) node[right] {Camera};
+\draw (18,-17.95) -- (25,-17.95) node[right] {LCD monitor chassis};
+
+% camera view lines?
+\draw[gray,dashed,shorten >=5pt,shorten <=2pt] (9.8,-16.5) -- (0, 0);
+\draw[gray,dashed,shorten >=15pt,shorten <=2pt] (10.2,-16.5) -- (20, 0);
+
+\end{tikzpicture}
+\caption{Schematic diagram of the touchscreen}
+\label{fig:hw-schem}
+\end{figure}
+
+\begin{figure}[p]
+\subfloat[Front view of the inside]{
+    \label{fig:box-front}\includegraphics[width=6.5cm]{box-open-front}}
+\hspace{1em}
+\subfloat[Touchscreen in action]{
+    \label{fig:box-top}\includegraphics[width=6.5cm]{IMG_0950}}
+\caption{Photographs of the touchscreen}
+\label{fig:hw-photos}
+\end{figure}
+
+\subsection{Operation and Construction}
 
 The touchscreen takes advantage of an optical phenomenon called
 \emph{frustrated total internal reflection} (FTIR).
@@ -499,7 +723,7 @@ When a finger is brought within a few wavelengths from the acrylic, it causes
 the light to scatter away from the finger.
 
 A camera placed behind the sheet of acrylic records the scattered light, and
-the resuting image is processed to obtain \emph{blobs}, or areas corresponding
+the resulting image is processed to obtain \emph{blobs}, or areas corresponding
 to the individual fingers touching the acrylic.
 The particular camera used is a PlayStation Eye, favored by hobbyist
 touchscreen builders for its low cost and high frame rate. % XXX: http://wiki.nuigroup.com/Cameras
@@ -532,7 +756,7 @@ virtually invisible to the user, and in the reverse direction, to blur the
 outside environment so that only blobs corresponding to touching fingers
 are discernible by the camera.
 
-The device is enlosed in a wooden box that blocks unwanted light from outside
+The device is enclosed in a wooden box that blocks unwanted light from outside
 and prevents movement of the camera relative to the display.
 A hinged door in the back of the device allows inspection of the internals.
 The power adaptor from the LCD monitor is secured inside the enclosure, away
@@ -541,49 +765,6 @@ In addition to the power cable, an USB cable for the camera and a VGA cable
 for the monitor extend from the device and need to be connected to the computer
 running the games.
 
-\begin{figure}[p]\small
-\begin{tikzpicture}[x=4mm,y=4mm,scale=0.93]
-\draw (-.5,0) rectangle (20.5,.5); % acrylic
-\draw (-1,0) rectangle (0,-20); % front wood
-\draw (20,0) rectangle (21,-20); % back wood
-\draw (0,-19) rectangle (20,-20); % bottom wood
-\draw (1,-.1) rectangle (19,-.3); % LCD
-\draw (1,-.4) rectangle (19,-.5); % diffuser
-\draw (1.1,-17) -- (18.9,-17) -- (18,-18.9) -- (2,-18.9) -- cycle; % backlight
-\draw (9.5,-16.5) rectangle (10.5,-17.3); % camera lens
-\draw (8,-17.3) rectangle (13,-17.5); % camera body
-
-\draw (-1,.1) -- (-.75,.1) arc (-90:90:.15) -- (-1,.4) -- cycle; % LED 1
-\begin{scope}[xscale=-1,xshift=-80mm]
-\draw (-1,.1) -- (-.75,.1) arc (-90:90:.15) -- (-1,.4) -- cycle; % LED 2
-\end{scope}
-
-\draw (20,.25) -- (22,2.2) -- (25,2.2) node[right] {Acrylic glass};
-\draw (20.75,.25) -- (22,1) -- (25,1) node[right] {IR LEDs};
-\draw (18.75,-.2) -- (22,-.2) -- (25,-.2) node[right] {LCD};
-\draw (18.75,-.45) -- (22,-1.4) -- (25,-1.4) node[right] {Diffuser};
-\draw (20.5,-10) -- (25,-10) node[right] {Wooden chassis};
-\draw (10,-16.75) -- (12,-15) -- (25,-15) node[right] {Camera};
-\draw (18,-17.95) -- (25,-17.95) node[right] {LCD monitor chassis};
-
-% camera view lines?
-\draw[gray,dashed,shorten >=5pt,shorten <=2pt] (9.8,-16.5) -- (0, 0);
-\draw[gray,dashed,shorten >=15pt,shorten <=2pt] (10.2,-16.5) -- (20, 0);
-
-\end{tikzpicture}
-\label{fig:schem}
-\caption{Schematic diagram of the touchscreen}
-\end{figure}
-
-\begin{figure}[p]\small
-\subfloat[Front view of the inside]{
-    \label{fig:box-front}\includegraphics[width=6.5cm]{box-open-front}}
-\hspace{1em}
-\subfloat[Touchscreen in action]{
-    \label{fig:box-top}\includegraphics[width=6.5cm]{IMG_0950}}
-\caption{Photographs of the touchscreen}
-\end{figure}
-
 \subsection{Problems}
 
 Due to the decreased brightness of the LCD backlight, the touchscreen functions
@@ -591,6 +772,12 @@ best in rooms that are not fully lit.
 Also, it reacts differently to fingers of different people, or even different
 fingers on the same hand, which means that some people may need to press harder
 on the screen than others.
+An effective way to get fingers registered more reliably is to wet them
+slightly before touching the surface.
+This limitation might be overcome by using a compliant surface layer, such as
+a thin film of transparent silicone, atop the acrylic.
+However, such a solution would be fairly expensive and risky, as the layer
+needs to be even so as to not distort the LCD image.
 
 The firmware and drivers for the PS3 Eye camera are designed to adapt to
 lighting conditions.
@@ -602,13 +789,14 @@ this problem.
 Despite these shortcomings, the table is usable and according to user testing,
 the games played on it are quite engaging.
 
-\newpage
-
-\tableofcontents
-
-\listoffigures
-
 \end{document}
+
+\section{Future Work}
+
+The games and the touch table will be used in an study exploring
+the usability of multi-touch input in games.
+The touchscreen will be also used, preferably in addition to a larger table
+that is currently being built in the department.
 
 % XXX: Refer to all figures
 
