@@ -648,11 +648,15 @@ class TowersGame(Widget):
         """
         self.initialized = True
 
-        win = self.get_parent_window()
+        try:
+            self.window_width
+            self.window_height
+        except AttributeError:
+            win = self.get_parent_window()
 
-        # `window_width` & `window_height`: dimensions of the window, in pixels
-        self.window_width = win.width
-        self.window_height = win.height
+            # `window_width` & `window_height`: dimensions of the window, in pixels
+            self.window_width = win.width
+            self.window_height = win.height
 
         # `matrix`: the matrix holding the maze. Values in this matrix are:
         # - nonnegative numbers: free space; the value represents the shortest

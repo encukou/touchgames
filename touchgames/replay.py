@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 # Encoding: UTF-8
 
+from __future__ import division
+
 import cPickle as pickle
 import sys
 from datetime import datetime
@@ -12,7 +14,7 @@ from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.clock import Clock
 from kivy.uix.label import Label
-from kivy.graphics import Rectangle, Color
+from kivy.graphics import Rectangle, Color, Scale, PushMatrix, PopMatrix
 import kivy.clock
 from kivy.input.motionevent import MotionEvent
 
@@ -38,10 +40,15 @@ class Logger(Widget):
         fileobj = open(log_filename, 'wb')
         self.stream = gzip.GzipFile(fileobj=fileobj)
         self.log('random', random.getstate())
+        self.have_size = False
 
     def tick(self, dt):
         """The base class implementation redraws the widget's canvas.
         """
+        if not self.have_size:
+            win = self.get_parent_window()
+            self.log('window_size', win.width, win.height)
+            self.have_size = True
         self.log('dt', dt)
         Clock.schedule_once(self.tick)
 
@@ -49,6 +56,7 @@ class Logger(Widget):
         super(Logger, self).add_widget(child)
         self.log('add_widget', type(child))
         self.log('random', random.getstate())
+        self.have_size = False
 
     def on_touch_down(self, touch):
         self.log_touch('down', touch)
@@ -153,6 +161,29 @@ class Replay(App):
         for name, value in attrs.items():
             setattr(touch, name, value)
         self.content_widget.dispatch(event, touch)
+
+    def handle_window_size(self, width, height):
+        print width, height
+        children_to_do = set([self.content_widget])
+        children_done = set()
+        while children_to_do:
+            child = children_to_do.pop()
+            child.window_width = width
+            child.window_height = height
+            children_done.add(child)
+            children_to_do.update(child.children)
+            children_to_do.difference_update(children_done)
+        self.content_widget.canvas.before.clear()
+        with self.content_widget.canvas.before:
+            PushMatrix()
+            win = self.content_widget.get_parent_window()
+            window_width = win.width
+            window_height = win.height
+            the_min = min(window_width / width, window_height / height)
+            Scale(the_min)
+        self.content_widget.canvas.after.clear()
+        with self.content_widget.canvas.after:
+            PopMatrix()
 
 class SpeedAdjuster(Widget):
     """Widget that adjusts the clock_speed of a Replay,
