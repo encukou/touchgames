@@ -319,15 +319,27 @@ class Tower(Widget):
     def sell_cost(self):
         """Cost for selling this tower, in €
         """
-        if self.level == 1:
-            # Level 1 costs €50 and sells for €40 (quite a good sell price)
-            return 40
-        else:
-            # Level 2 upgrades from 1 for €100, €150 total; sells for €100
-            # Level 3 upgrades from 2 for €200, €350 total; sells for €200
-            # Level 4 upgrades from 3 for €400, €750 total; sells for €400
-            # Level 5 upgrades from 4 for €800,€1550 total; sells for €800
-            return self.upgrade_cost // 2
+        return self.sell_cost_for_level(self.level)
+
+    @property
+    def score_cost(self):
+        cost = self.sell_cost
+        if self.upgrading_direction:
+            fract = self.upgrade_spent / self.upgrade_cost
+            cost *= (1 - fract)
+            cost += self.sell_cost_for_level(self.level + 1) * fract
+        return cost
+
+    def sell_cost_for_level(self, level):
+        return {
+                0: 0,
+                1: 40, # €50 total cost (quite a good sell price)
+                2: 100, # upgrades for €100, €150 total cost
+                3: 200, # upgrades for €200, €350 total cost
+                4: 400, # upgrades for €400, €750 total cost
+                5: 800, # upgrades for €800,€1550 total cost
+                6: 1600, # not obtainable
+            }[level]
 
     @property
     def area(self):
@@ -738,6 +750,25 @@ class TowersGame(Widget):
         self.canvas.after.clear()
         with self.canvas.after:
             PushMatrix()
+            scores = self.funds[:]
+            for tower in self.towers:
+                scores[tower.side] += tower.score_cost
+            total = sum(scores)
+            if not total:
+                # Avoid division by zero by cheating a bit
+                total = 0.01
+            '''
+            # Score ball in the middle of screen
+            if total > 0:
+                position = scores[0] / total * self.window_height
+                PushMatrix()
+                Color(1, 1, 1, 0.5)
+                Translate(self.window_width / 2, position, 0)
+                RingSection(0, numpy.pi, 0, self.cell_width * .5)
+                PopMatrix()
+            '''
+
+            Color(1, 1, 1, 0.5)
             Translate(self.window_width, 0, 0)
             Rotate(90, 0, 0, 1)
             for side in reversed(range(2)):
@@ -749,7 +780,7 @@ class TowersGame(Widget):
                             -self.window_width // 2, 0)
                 Color(0, 0, 0)
                 label = Label(text=u"€ %s" % int(round(self.funds[side])),
-                        pos=(self.cell_size, 0),
+                        pos=(self.cell_size, 0),#(self.window_width - self.cell_size * 4) / 2),
                         size=(0, TOWER_PIXEL_SIZE),
                         font_size=self.cell_size,
                         color=(0, 0, 0),
@@ -774,8 +805,10 @@ class TowersGame(Widget):
                                 color=(1, 0, 0),
                             )
                 c_hp = self.critter_hp
-                red = clamp((self.funds[side] / 10) / c_hp, 0, 1)
-                self.home_bar_colors[side].rgb = (1, red, red)
+                red = clamp(scores[side] / total * 2, 0, 1)
+                if scores[side] < 0:
+                    red = 0
+                self.home_bar_colors[side].rgb = (1, clamp(red * 2, 0, 1), red)
             PopMatrix()
 
     def solvemaze(self):
