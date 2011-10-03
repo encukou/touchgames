@@ -739,12 +739,16 @@ class MazeBoard(TickingWidget):
         self.build_tries[create].add(coord)
         if coord == self.start_cranny or coord == (2, 1):
             return False
+        try:
+            current_state = self.matrix[coord]
+        except IndexError:
+            return False
         m = self.matrix.copy()
-        if not create and self.matrix[coord] >= 0:
+        if not create and current_state >= 0:
             # Build a wall
             m[coord] = -1
             rv = self.set_walls(m)
-        elif create and self.matrix[coord] == -1:
+        elif create and current_state == -1:
             # Build a corridor
             m[coord] = 0
             rv = self.set_walls(m)
