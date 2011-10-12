@@ -17,7 +17,7 @@ from kivy.animation import Animation
 
 from touchgames.mazesolver import solvemaze
 from touchgames.util import FilledCircle, HollowCircle
-from touchgames.replay import Logger
+from touchgames.replay import LoggedApp
 
 # Tunable values:
 CRITTER_SPEED = 4  # tiles per second
@@ -984,5 +984,5 @@ class TowersApp(App):
 if __name__ == '__main__':
     # re-importing this file so the classes are pickle-able
     # (otherwise they'd be pickled as  e.g. ‘__main__.TowersApp’ – useless)
-    from touchgames.towers import TowersApp
-    TowersApp().run()
+    from touchgames.towers import TowersGame
+    LoggedApp(TowersGame).run()

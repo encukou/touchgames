@@ -25,7 +25,7 @@ from kivy.graphics.instructions import Canvas
 
 from touchgames.mazesolver import solvemaze
 from touchgames.util import FilledCircle, HollowCircle
-from touchgames.replay import Logger
+from touchgames.replay import LoggedApp
 
 COUNTDOWN_START = 5
 MAZE_CELL_SIZE = 30
@@ -1262,20 +1262,8 @@ def schedule_tick(f):
     Clock.schedule_once(tick)
     return tick
 
-class MazeApp(App):
-    """The Kivy app for the maze game
-    """
-    def __init__(self, replay=None):
-        super(MazeApp, self).__init__()
-
-    def build(self):
-        parent = Logger()
-        parent.add_widget(MazeGame())
-
-        return parent
-
 if __name__ == '__main__':
     # re-importing this file so the classes are pickle-able
     # (otherwise they'd be pickled as  e.g. ‘__main__.MazeApp’ – useless)
-    from touchgames.maze import MazeApp
-    MazeApp().run()
+    from touchgames.maze import MazeGame
+    LoggedApp(MazeGame).run()

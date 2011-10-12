@@ -18,6 +18,21 @@ from kivy.graphics import Rectangle, Color, Scale, PushMatrix, PopMatrix
 import kivy.clock
 from kivy.input.motionevent import MotionEvent
 
+class LoggedApp(App):
+    def __init__(self, widget_class):
+        super(LoggedApp, self).__init__()
+        self.widget_class = widget_class
+
+    def build(self):
+        self.logger = parent = Logger()
+        parent.add_widget(self.widget_class())
+
+        return parent
+
+    def run(self):
+        super(LoggedApp, self).run()
+        self.logger.close()
+
 class Logger(Widget):
     """A widget that logs time, touches and other info into a file
 
@@ -37,7 +52,7 @@ class Logger(Widget):
         Clock.schedule_once(self.tick)
 
         log_filename = 'log-%s.log' % datetime.now().isoformat()
-        fileobj = open(log_filename, 'wb')
+        self._fileobj = fileobj = open(log_filename, 'wb')
         self.stream = gzip.GzipFile(fileobj=fileobj)
         self.log('random', random.getstate())
         self.have_size = False
@@ -80,6 +95,10 @@ class Logger(Widget):
         pickle.dump(args, self.stream, protocol=2)
         self.stream.flush()
 
+    def close(self):
+        self.stream.close()
+        self._fileobj.close()
+
 class ReplayMotionEvent(MotionEvent):
     """A dummy MotionEvent, since kivy won't let us use MotionEvent directly
     """
@@ -99,14 +118,16 @@ class Replay(App):
     """
     def __init__(self, log_filename):
         super(Replay, self).__init__()
+        self.log_filename = log_filename
         kivy.clock.time = self.time
-        self.stream = gzip.GzipFile(fileobj=open(log_filename, 'rb'))
+        self.stream = gzip.GzipFile(fileobj=open(self.log_filename, 'rb'))
         self.first_tick = time()
         self.last_tick = time()
         self.time_elapsed = 0
         self.stream_time = 0
         self.next_id = 0
         self.clock_speed = 1
+        self.running = True
 
     def build(self):
         self.top_widget = Widget()
@@ -121,13 +142,31 @@ class Replay(App):
         current = time()
         self.time_elapsed += (current - self.last_tick) * self.clock_speed
         self.last_tick = current
+        if not self.running:
+            return self.last_tick
         while self.stream and self.time_elapsed > self.stream_time:
-            rec = pickle.load(self.stream)
-            getattr(self, 'handle_' + rec[0])(*rec[1:])
-            if rec[0] == 'dt':
-                # Ensure every tick gets handled
+            try:
+                rec = pickle.load(self.stream)
+            except EOFError:
+                self.handle__end()
+                self.running = False
                 break
+            else:
+                getattr(self, 'handle_' + rec[0])(*rec[1:])
+                if rec[0] == 'dt':
+                    # Ensure every tick gets handled
+                    break
         return self.first_tick + self.stream_time
+
+    def handle__end(self):
+        parent = self.top_widget.get_parent_window()
+        with self.top_widget.canvas:
+            Color(0, 0, 0.2, 0.5)
+            Rectangle(size=(parent.width, 40),
+                    pos=(0, parent.height / 2 - 20))
+        self.top_widget.add_widget(Label(text='Replay finished',
+                width=self.top_widget.get_parent_window().width,
+                pos=(0, parent.height / 2 - 5), height=10, color=(1, 1, 1, 1)))
 
     # Handlers for events from the log file:
 
@@ -191,6 +230,7 @@ class SpeedAdjuster(Widget):
     """
     def __init__(self, replay):
         self.replay = replay
+        self.active_touch_uid = None
         super(SpeedAdjuster, self).__init__()
 
     def on_touch_down(self, touch):
