@@ -80,6 +80,8 @@ def RingSection(start, end, inner_radius, outer_radius):
     `inner_radius` and `outer_radius` are in pixels
     The ring section is centered at (0, 0)
     """
+    if start > end:
+        start, end = end, start
     num = 64
     for t in range(int(start * num), int(end * num)):
         a = t * pi * 2 / num

@@ -26,6 +26,7 @@ from kivy.graphics.instructions import Canvas
 from touchgames.mazesolver import solvemaze
 from touchgames.util import FilledCircle, HollowCircle
 from touchgames.replay import LoggedApp
+from touchgames.towers import RingSection
 
 COUNTDOWN_START = 5
 MAZE_CELL_SIZE = 33
@@ -265,51 +266,47 @@ class Ball(TickingWidget):
             self.animation.start(self)
             return True
 
-class Builder(Widget):
-    """The “line” for modifying the maze
-
-    Follows a touch, and either builds or destroys corridors (based on the
-    `build` argument). Disappears on touch up.
-
-    The line is either green (for building) or red (for destroying).
-    If the line goes through a ball zone of control, it is inactive (no
-    building/destroying). This is indicated graphically by turning the line
-    gray. The inactive part stays gray even if the ball is moved.
-
-    The line is kept at a maximum length, by fading out the “tail”.
+class BuildLoop(TickingWidget):
+    """A widget that allows a player to modify the maze
     """
-    def __init__(self, build, **kwargs):
-        super(Builder, self).__init__(**kwargs)
-        # points: a list of (x, y, active) triples
-        self.points = [(self.pos[0], self.pos[1], True)]
-        # build: True for building, False for destroying
-        self.build = build
-        # opacity: animated to 0 for a fade-out
-        self.opacity = 1
+    def __init__(self, spin, **kwargs):
+        super(BuildLoop, self).__init__(**kwargs)
+        self.spin = spin
+        self.build = spin < 0
+        self.touch_uid = None
+        self.done = 0
+        def f(dt):
+            if not self.parent.set_wall(self.int_tile, self.build, noop=True):
+                self.done = 0.99
+                self.die()
+        Clock.schedule_once(f)
 
-    def on_touch_down(self, touch, force=False):
-        if force:
-            self.max_points = int(self.parent.cell_size / 3 * 10)
-            self.touch_uid = touch.uid
-        if self.touch_uid == touch.uid:
-            #touch.grab(self)
-            return True
+    @property
+    def int_tile(self):
+        x, y = self.pos
+        tile_coord = self.parent.pixel_to_tile((x, y))
+        return int(tile_coord[0]), int(tile_coord[1])
 
-    def on_touch_move(self, touch):
-        if self.touch_uid == touch.uid:
-            old_x, old_y, old_active = self.points[-1]
-            parent = self.parent
-            for x, y in calculate_points(old_x, old_y, touch.x, touch.y,
-                    spacing=3):
-                ok = True
-                for ball in self.parent.balls:
-                    if ball.collide_zoc(x, y):
-                        ok = False
-                        break
-                self.points.append((x, y, ok))
-                if ok:
-                    tile_coord = parent.pixel_to_tile((x, y))
-                    int_tile = int(tile_coord[0]), int(tile_coord[1])
+    def tick(self, dt):
+        if self.done < 1:
+            self.canvas.after.clear()
+            self.done += dt * 3
+            with self.canvas.after:
+                PopMatrix()
+                if self.build:
+                    Color(0, 1, 0, 0.5)
+                else:
+                    Color(1, 0, 0, 0.5)
+                if self.parent.parent.current_solver:
+                    Rotate(180)
+                RingSection(0, -min(1, self.done) * self.spin, 1.5, 2)
+                PopMatrix()
+            if self.done > 1:
+                self.die()
+                x, y = self.pos
+                parent = self.parent
+                if not any(ball.collide_zoc(x, y) for ball in parent.balls):
+                    int_tile = self.int_tile
                     # Try building/destroying
                     if parent.set_wall(int_tile, self.build):
                         # Successful change to the maze, show some SFX
@@ -321,67 +318,6 @@ class Builder(Widget):
                                         int_tile[1] + 0.5,
                                     )),
                             )
-            # Trim the line to the max length
-            max_points = self.max_points
-            self.points = self.points[-max_points:]
-            self.redraw()
-            return True
-
-    def on_touch_up(self, touch):
-        """Destroy the widget when the touch disappears.
-
-        Includes a fade-out animation.
-        """
-        if self.touch_uid == touch.uid:
-            Animation(opacity=0, duration=0.25).start(self)
-            tick = schedule_tick(self.redraw)
-            def die(dt):
-                Clock.unschedule(tick)
-                if self.parent:
-                    self.parent.remove_widget(self)
-            Clock.schedule_once(die, 0.25)
-            return True
-
-    def redraw(self, dt=None):
-        """Redraw the whole line
-        """
-        self.canvas.clear()
-        if self.build:
-            r, g = 0, 1
-        else:
-            r, g = 1, 0
-        with self.canvas:
-            for opacity, (x, y, active) in zip(
-                    range(self.max_points), reversed(self.points)):
-                alpha = (1 - opacity / self.max_points) * self.opacity
-                if active:
-                    Color(r, g, 0, alpha)
-                else:
-                    Color(0.4 + r * 0.1, 0.4 + g * 0.1, 0.5, alpha)
-                Point(points=(x, y), pointsize=5, source='particle.png')
-
-class BuildLoop(TickingWidget):
-    """A widget that allows a player to draw a loop to begin modifying the maze
-
-    Represented by a ring of dots spinning around the starting point, and a
-    line traced by the touch. The color of these changes from yellow to green
-    or red depending on the direction of the loop being drawn.
-
-    Once the touch returns to the starting position, and the loop is
-    sufficiently big, a corresponding Builder is created at that position.
-
-    The game needs to know the orientation and area of the loop, and the player
-    can draw arbitrary polygons instead of plain loops. A simple formula for
-    the signed area of a polygon[1] is used, which works very well for both
-    “proper” loops and any convex or self-intersecting drawings the player
-    might draw.
-
-    [1] http://mathworld.wolfram.com/PolygonArea.html
-    """
-    def __init__(self, spin, **kwargs):
-        super(BuildLoop, self).__init__(**kwargs)
-        self.spin = spin
-        self.touch_uid = None
 
     def on_touch_down(self, touch, force=False):
         if force:
@@ -398,23 +334,10 @@ class BuildLoop(TickingWidget):
                 self.points = Point(points=self.pos, pointsize=5,
                     source='particle.png')
                 Translate(self.pos[0], self.pos[1], 0)
-                self.scale_instruction = Scale(self.parent.cell_size * 10)
-                self.rotate_instruction = Rotate(0, 0, 0, 1)
+                self.scale_instruction = Scale(self.parent.cell_size)
                 self.rscale_instruction = Scale(1)
-                num_satellites = 9
-                satellites = []
-                for i in range(num_satellites):
-                    angle = i / num_satellites * 2 * math.pi
-                    satellites.extend([
-                            math.cos(angle) * 1.3,
-                            math.sin(angle) * 1.3,
-                        ])
-                Point(points=satellites, pointsize=0.2, source='particle2.png')
-
-            # A scale-in animation
-            animation = Animation(scale=self.parent.cell_size / 3 * 2,
-                    t='out_cubic', duration=0.2)
-            animation.start(self.scale_instruction)
+                PushMatrix()
+                self.rotate_instruction = Rotate(0, 0, 0, 1)
 
             # A fade-in animation
             animation = Animation(a=0.8, t='out_cubic', duration=0.2)
@@ -427,56 +350,10 @@ class BuildLoop(TickingWidget):
 
     def on_touch_move(self, touch):
         if self.touch_uid == touch.uid:
-            points = self.points.points
-            oldx, oldy = points[-2], points[-1]
-            points = calculate_points(oldx, oldy, touch.x, touch.y, spacing=3)
-            if points:
-                add_point = self.points.add_point
-                for x, y in points:
-                    add_point(x, y)
-
-            # Calculate the area of the polygon being drawn (closing it with
-            # a line from end to beginning); the sign of the result represents
-            # the orientation.
-            signed_area = sum(
-                    x1 * y2 - x2 * y1
-                    for (x1, y1), (x2, y2)
-                    in zip(
-                            yield_groups(self.points.points, 2),
-                            yield_groups(self.points.points[2:] +
-                                self.points.points[:2], 2),
-                        )
-                ) / 2
-            # Compute the area in tiles²
-            tile_square_unit = self.parent.cell_width * self.parent.cell_height
-            area_in_tiles = signed_area / tile_square_unit
-            # `done`: the percentage to which the loop is done; signed as above
-            done = area_in_tiles / MIN_LOOP_AREA
-            if done < 0:
-                # Clockwise loop; green
-                if done < -1:
-                    done = -1
-                color = 1 + done, 1, 0
-            else:
-                # Counter-clockwise loop; red
-                if done > 1:
-                    done = 1
-                color = 1, 1 - done, 0
-            # Set the color
-            self.color_instruction.rgb = color
-            # Check if we're back at the starting tile with a big enough loop
-            if abs(done) == 1:
-                x, y = self.parent.pixel_to_tile(self.pos)
-                end_x, end_y = self.parent.pixel_to_tile(touch.pos)
-                if int(x) == int(end_x) and int(y) == int(end_y):
-                    # Create a builder
-                    touch.ungrab(self)
-                    builder = Builder(pos=self.pos, build=done < 0)
-                    self.parent.add_widget(builder)
-                    builder.on_touch_down(touch, force=True)
-                    builder.on_touch_move(touch)
-                    self.die()
-            return True
+            if abs(touch.x - self.x) + abs(touch.y - self.y) > MAZE_CELL_SIZE * 2:
+                touch.ungrab(self)
+                self.die()
+                return True
 
     def on_touch_up(self, touch):
         if self.touch_uid == touch.uid:
@@ -488,8 +365,8 @@ class BuildLoop(TickingWidget):
         """Ending animation and destruction of the widget
         """
         # Scale-out animation
-        animation = Animation(scale=self.parent.cell_size * 15,
-                t='in_cubic', duration=0.15)
+        animation = Animation(scale=self.parent.cell_size * .15,
+                duration=0.15)
         animation.start(self.scale_instruction)
 
         # Fade-out animation
@@ -500,7 +377,7 @@ class BuildLoop(TickingWidget):
         def _die(dt):
             if self.parent:
                 self.parent.remove_widget(self)
-        Clock.schedule_once(_die, 0.15)
+        Clock.schedule_once(_die, 0.2)
 
 class MazeBoard(TickingWidget):
     """A maze for a single turn in the game
@@ -707,7 +584,7 @@ class MazeBoard(TickingWidget):
                 # (with light walls; a dark color)
                 return numpy.array((r, g, b, 1)) ** 8
 
-    def set_walls(self, matrix):
+    def set_walls(self, matrix, noop=False):
         """Set walls and solve the maze. No-op if maze is unsolvable.
 
         `matrix`: A 2D matrix with negative values for walls
@@ -723,6 +600,8 @@ class MazeBoard(TickingWidget):
         m = solvemaze(corridors, mstart)
         if m is None:
             return False
+        if noop:
+            return True
         m[self.start_point + (0,)] = m[(1, 1, 1)] = 1
         self.bdist = m[:, :, 2]
         self.dist = m[:, :, 1]
@@ -733,7 +612,7 @@ class MazeBoard(TickingWidget):
         self.build_tries = defaultdict(set)
         return True
 
-    def set_wall(self, coord, create):
+    def set_wall(self, coord, create, noop=False):
         """Set (create== True) or destroy (create == False) a wall at coord
 
         If the operation would create an unsolvable maze, nothing is done.
@@ -753,11 +632,11 @@ class MazeBoard(TickingWidget):
         if not create and current_state >= 0:
             # Build a wall
             m[coord] = -1
-            rv = self.set_walls(m)
+            rv = self.set_walls(m, noop)
         elif create and current_state == -1:
             # Build a corridor
             m[coord] = 0
-            rv = self.set_walls(m)
+            rv = self.set_walls(m, noop)
         else:
             return False
         if rv:
@@ -830,8 +709,6 @@ class MazeBoard(TickingWidget):
                 )
             self.add_widget(build_loop)
             build_loop.on_touch_down(touch, force=True)
-            self.parent.set_message(False,
-                    "Loop clockwise to build corridors, CCW to destroy them.")
 
     def win(self):
         """End the current round, destroy the widget.
@@ -881,7 +758,7 @@ class MazeGame(Widget):
         self.board = MazeBoard()
         self.add_widget(self.board)
         self.set_message(True, 'Wait...')
-        self.set_message(False, 'Draw a loop to modify the maze.')
+        self.set_message(False, "Touch and hold to build or destroy corridors.")
 
     def add_time(self, time):
         """Add some time th the current solver's clock
