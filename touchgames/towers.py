@@ -12,7 +12,7 @@ from kivy.clock import Clock
 from kivy.uix.widget import Widget
 from kivy.uix.label import Label
 from kivy.graphics import (Color, Ellipse, Line, Rectangle, Triangle, Point,
-    Rotate, Translate, Scale, PushMatrix, PopMatrix, LineWidth)
+    Rotate, Translate, Scale, PushMatrix, PopMatrix)
 from kivy.animation import Animation
 
 from touchgames.mazesolver import solvemaze
@@ -493,12 +493,10 @@ class Tower(Widget):
                 center = self.center
                 direction = self.direction
                 cell_size = self.parent.cell_size
-                LineWidth(self.level)
                 Line(points=itertools.chain(self.center, (
                         float(center[0] + numpy.cos(direction) * cell_size),
                         float(center[1] + numpy.sin(direction) * cell_size),
                     )))
-                LineWidth(1)
 
     def upgrade_tick(self, dt):
         """Called each frame when upgrading (or cancelling upgrade)
