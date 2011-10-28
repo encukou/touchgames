@@ -1,22 +1,14 @@
 #! /usr/bin/env python
 # Encoding: UTF-8
 
-from __future__ import division
+from __future__ import division, absolute_import
 
-try:
-    import numpy
-    from numpy import pi, cos, sin, arctan2, sign
-except ImportError:
-    numpy = None
-    from math import pi, cos, sin, arctan2
-    from kivy.vector import Vector
-    def sign(x):
-        if x == 0:
-            return 0
-        return 1 if x > 0 else -1
+from array import array
 import itertools
 import random
+from math import sin, cos, pi, atan2
 
+import numpy
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.uix.widget import Widget
@@ -24,6 +16,7 @@ from kivy.uix.label import Label
 from kivy.graphics import (Color, Line, Rectangle, Triangle,
     Rotate, Translate, Scale, PushMatrix, PopMatrix)
 from kivy.animation import Animation
+from kivy.vector import Vector
 
 from touchgames.mazesolver import solvemaze
 from touchgames.util import FilledCircle, HollowCircle
@@ -52,6 +45,14 @@ def clamp(value, minimum, maximum):
         return maximum
     return value
 
+def sign(number):
+    if number == 0:
+        return 0
+    elif number < 0:
+        return -1
+    else:
+        return 1
+
 def roundrobin(*iterables):
     "roundrobin('ABC', 'D', 'EF') --> A D E B F C"
     # Recipe credited to George Sakkis
@@ -66,10 +67,7 @@ def roundrobin(*iterables):
             nexts = itertools.cycle(itertools.islice(nexts, pending))
 
 num_circle_points = 100
-if numpy:
-    ts = numpy.arange(num_circle_points + 1) * pi * 2 / num_circle_points
-else:
-    ts = [x * pi * 2 / num_circle_points for x in xrange(num_circle_points + 1)]
+ts = [t * pi * 2 / num_circle_points for t in range(num_circle_points)]
 circle_points = list(roundrobin(
         ((cos(t) * 3, -sin(t) * 3) for t in ts),
         ((cos(t) * 2, -sin(t) * 2) for t in ts),
@@ -241,7 +239,7 @@ class Critter(Widget):
         y = self.ydir
         self.draw()
         old_direcion = self.direction
-        self.direction = arctan2(self.xdir, self.ydir)
+        self.direction = atan2(self.xdir, self.ydir)
         self.pos = self.pos[0] + x, self.pos[1] + y
         Animation(xy=(x, y), duration=time).start(self.translate_instruction)
         Animation(angle=(old_direcion - self.direction) * 180 / pi,
@@ -496,7 +494,7 @@ class Tower(Widget):
                     Line(points=itertools.chain(self.center, self.target.pos))
                     Clock.schedule_once(self.draw_shot)
                 # Set cannon direction
-                self.direction = arctan2(
+                self.direction = atan2(
                         self.target.pos[1] - self.center[1],
                         self.target.pos[0] - self.center[0],
                     )
@@ -616,10 +614,7 @@ class Tower(Widget):
         if self.target:
             # I there's an existing target, keep shooting at it until it dies
             # or moves out of range
-            if numpy:
-                dist = sum((numpy.array(self.target.pos) - self.center) ** 2)
-            else:
-                dist = Vector(self.target.pos).distance2(self.center)
+            dist = Vector(self.target.pos).distance2(self.center)
             if dist > dist_max or self.target.dead:
                 self.target = None
         if not self.target:
@@ -628,10 +623,7 @@ class Tower(Widget):
             possibilities = []
             for target in self.parent.children:
                 if isinstance(target, Critter) and not target.dead:
-                    if numpy:
-                        dist = sum((numpy.array(target.pos) - self.center) ** 2)
-                    else:
-                        dist = Vector(self.target.pos).distance2(self.center)
+                    dist = Vector(target.pos).distance2(self.center)
                     if dist < dist_max:
                         target_health = 1 - target.damage / target.hp
                         possibilities.append((dist * target_health, target))
