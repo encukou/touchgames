@@ -3,7 +3,17 @@
 
 from __future__ import division
 
-import numpy
+try:
+    import numpy
+    from numpy import pi, cos, sin, arctan2, sign
+except ImportError:
+    numpy = None
+    from math import pi, cos, sin, arctan2
+    from kivy.vector import Vector
+    def sign(x):
+        if x == 0:
+            return 0
+        return 1 if x > 0 else -1
 import itertools
 import random
 
@@ -11,7 +21,7 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.uix.widget import Widget
 from kivy.uix.label import Label
-from kivy.graphics import (Color, Ellipse, Line, Rectangle, Triangle, Point,
+from kivy.graphics import (Color, Line, Rectangle, Triangle,
     Rotate, Translate, Scale, PushMatrix, PopMatrix)
 from kivy.animation import Animation
 
@@ -56,10 +66,13 @@ def roundrobin(*iterables):
             nexts = itertools.cycle(itertools.islice(nexts, pending))
 
 num_circle_points = 100
-ts = numpy.arange(num_circle_points + 1) * numpy.pi * 2 / num_circle_points
+if numpy:
+    ts = numpy.arange(num_circle_points + 1) * pi * 2 / num_circle_points
+else:
+    ts = [x * pi * 2 / num_circle_points for x in xrange(num_circle_points + 1)]
 circle_points = list(roundrobin(
-        ((numpy.cos(t) * 3, -numpy.sin(t) * 3) for t in ts),
-        ((numpy.cos(t) * 2, -numpy.sin(t) * 2) for t in ts),
+        ((cos(t) * 3, -sin(t) * 3) for t in ts),
+        ((cos(t) * 2, -sin(t) * 2) for t in ts),
     ))
 
 def RingSection(start, end, inner_radius, outer_radius):
@@ -71,17 +84,17 @@ def RingSection(start, end, inner_radius, outer_radius):
     """
     num = 64
     for t in range(int(start * num), int(end * num)):
-        a = t * numpy.pi * 2 / num
-        b = (t + 1) * numpy.pi * 2 / num
+        a = t * pi * 2 / num
+        b = (t + 1) * pi * 2 / num
         Triangle(points=(
-                numpy.cos(a) * inner_radius, numpy.sin(a) * inner_radius,
-                numpy.cos(a) * outer_radius, numpy.sin(a) * outer_radius,
-                numpy.cos(b) * inner_radius, numpy.sin(b) * inner_radius,
+                cos(a) * inner_radius, sin(a) * inner_radius,
+                cos(a) * outer_radius, sin(a) * outer_radius,
+                cos(b) * inner_radius, sin(b) * inner_radius,
             ))
         Triangle(points=(
-                numpy.cos(a) * outer_radius, numpy.sin(a) * outer_radius,
-                numpy.cos(b) * inner_radius, numpy.sin(b) * inner_radius,
-                numpy.cos(b) * outer_radius, numpy.sin(b) * outer_radius,
+                cos(a) * outer_radius, sin(a) * outer_radius,
+                cos(b) * inner_radius, sin(b) * inner_radius,
+                cos(b) * outer_radius, sin(b) * outer_radius,
             ))
 
 class Critter(Widget):
@@ -105,9 +118,9 @@ class Critter(Widget):
         # Are we dead yet?
         self.dead = False
         # x-component of velocity
-        self.xdir = int(numpy.sign(round(numpy.cos(direction))))
+        self.xdir = int(sign(round(cos(direction))))
         # y-component of velocity
-        self.ydir = int(numpy.sign(round(numpy.sin(direction))))
+        self.ydir = int(sign(round(sin(direction))))
         # Initial velocity
         self.initial_dir = self.xdir, self.ydir
 
@@ -145,7 +158,7 @@ class Critter(Widget):
             Translate(self.pos[0], self.pos[1], 0)
             # saved instructions are animated later:
             self.translate_instruction = Translate(0, 0, 0)
-            Rotate(90 - self.direction * 180 / numpy.pi, 0, 0, 1)
+            Rotate(90 - self.direction * 180 / pi, 0, 0, 1)
             self.rotate_instruction = Rotate(0, 0, 0, 1)
             self.scale_instruction = Scale(1)
             self.color_instruction = Color(0, 0, 1)
@@ -157,8 +170,8 @@ class Critter(Widget):
             # Draw eyes
             for angle in (-0.5, 0.5):
                 Rectangle(pos=(
-                            numpy.cos(angle) * distance - 1,
-                            numpy.sin(angle) * distance - 1),
+                            cos(angle) * distance - 1,
+                            sin(angle) * distance - 1),
                         size=(2, 2))
             PopMatrix()
 
@@ -194,8 +207,8 @@ class Critter(Widget):
 
         # List of candidate (x, y) offsets, equally spaced on a circle
         values = [(
-                float(numpy.cos(t * numpy.pi / 20)) * self.parent.cell_width,
-                float(numpy.sin(t * numpy.pi / 20)) * self.parent.cell_height)
+                float(cos(t * pi / 20)) * self.parent.cell_width,
+                float(sin(t * pi / 20)) * self.parent.cell_height)
             for t in range(0, 40)]
         # Change to (b, x, y), where b is the board matrix value at (x, y)
         values = [(self.parent.tile(self.pos[0] + x, self.pos[1] + y), x, y)
@@ -228,10 +241,10 @@ class Critter(Widget):
         y = self.ydir
         self.draw()
         old_direcion = self.direction
-        self.direction = numpy.arctan2(self.xdir, self.ydir)
+        self.direction = arctan2(self.xdir, self.ydir)
         self.pos = self.pos[0] + x, self.pos[1] + y
         Animation(xy=(x, y), duration=time).start(self.translate_instruction)
-        Animation(angle=(old_direcion - self.direction) * 180 / numpy.pi,
+        Animation(angle=(old_direcion - self.direction) * 180 / pi,
                 duration=time / 2).start(self.rotate_instruction)
 
         # Prepare next time
@@ -291,7 +304,7 @@ class Tower(Widget):
 
         # `direction`: Direction the cannon is facing, in radians
         if side:
-            self.direction = numpy.pi
+            self.direction = pi
         else:
             self.direction = 0
 
@@ -483,7 +496,7 @@ class Tower(Widget):
                     Line(points=itertools.chain(self.center, self.target.pos))
                     Clock.schedule_once(self.draw_shot)
                 # Set cannon direction
-                self.direction = numpy.arctan2(
+                self.direction = arctan2(
                         self.target.pos[1] - self.center[1],
                         self.target.pos[0] - self.center[0],
                     )
@@ -494,8 +507,8 @@ class Tower(Widget):
                 direction = self.direction
                 cell_size = self.parent.cell_size
                 Line(points=itertools.chain(self.center, (
-                        float(center[0] + numpy.cos(direction) * cell_size),
-                        float(center[1] + numpy.sin(direction) * cell_size),
+                        float(center[0] + cos(direction) * cell_size),
+                        float(center[1] + sin(direction) * cell_size),
                     )))
 
     def upgrade_tick(self, dt):
@@ -603,7 +616,10 @@ class Tower(Widget):
         if self.target:
             # I there's an existing target, keep shooting at it until it dies
             # or moves out of range
-            dist = sum((numpy.array(self.target.pos) - self.center) ** 2)
+            if numpy:
+                dist = sum((numpy.array(self.target.pos) - self.center) ** 2)
+            else:
+                dist = Vector(self.target.pos).distance2(self.center)
             if dist > dist_max or self.target.dead:
                 self.target = None
         if not self.target:
@@ -612,7 +628,10 @@ class Tower(Widget):
             possibilities = []
             for target in self.parent.children:
                 if isinstance(target, Critter) and not target.dead:
-                    dist = sum((numpy.array(target.pos) - self.center) ** 2)
+                    if numpy:
+                        dist = sum((numpy.array(target.pos) - self.center) ** 2)
+                    else:
+                        dist = Vector(self.target.pos).distance2(self.center)
                     if dist < dist_max:
                         target_health = 1 - target.damage / target.hp
                         possibilities.append((dist * target_health, target))
@@ -696,7 +715,7 @@ class TowersGame(Widget):
         """Set a pair of Critters free
         """
         release_point = random.uniform(0, self.window_height)
-        for direction in (0, numpy.pi):
+        for direction in (0, pi):
             self.add_widget(Critter(
                     pos=(self.window_width // 2, release_point),
                     direction=direction,
@@ -762,7 +781,7 @@ class TowersGame(Widget):
                 PushMatrix()
                 Color(1, 1, 1, 0.5)
                 Translate(self.window_width / 2, position, 0)
-                RingSection(0, numpy.pi, 0, self.cell_width * .5)
+                RingSection(0, pi, 0, self.cell_width * .5)
                 PopMatrix()
             '''
 
