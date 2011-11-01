@@ -67,33 +67,34 @@ def solvemaze(
     cdef int i, x, y, z
     cdef int done, changed, tmp
 
-    with cython.boundscheck(False), cython.wraparound(False):
-        for i in range(maxiters):
-            changed = 0
-            done = True
-            for x in range(0, M):
-                for y in range(0, N):
-                    if corridors[x, y, 0]:
-                        for z in range(D):
-                            if mstart[x, y, z]:
-                                m[x, y, z] = 1
-                            else:
-                                tmp = int_min4(
-                                        m[x+1, y, z] if x < M - 1 else infinity,
-                                        m[x-1, y, z] if x > 0 else infinity,
-                                        m[x, y+1, z] if y < N - 1 else infinity,
-                                        m[x, y-1, z] if y > 0 else infinity,
-                                    ) + costs_r[x, y]
-                                if tmp != m[x, y, z]:
-                                    changed += 1
-                                    m[x, y, z] = tmp
-                                elif tmp >= infinity:
-                                    done = False
-            if changed == 0:
-                m = numpy_select([corridors], [m], 0)
-                if done:
-                    return m
-                else:
-                    return None
-        else:
-            return None
+    with cython.boundscheck(False):
+        with cython.wraparound(False):
+            for i in range(maxiters):
+                changed = 0
+                done = True
+                for x in range(0, M):
+                    for y in range(0, N):
+                        if corridors[x, y, 0]:
+                            for z in range(D):
+                                if mstart[x, y, z]:
+                                    m[x, y, z] = 1
+                                else:
+                                    tmp = int_min4(
+                                            m[x+1, y, z] if x < M - 1 else infinity,
+                                            m[x-1, y, z] if x > 0 else infinity,
+                                            m[x, y+1, z] if y < N - 1 else infinity,
+                                            m[x, y-1, z] if y > 0 else infinity,
+                                        ) + costs_r[x, y]
+                                    if tmp != m[x, y, z]:
+                                        changed += 1
+                                        m[x, y, z] = tmp
+                                    elif tmp >= infinity:
+                                        done = False
+                if changed == 0:
+                    m = numpy_select([corridors], [m], 0)
+                    if done:
+                        return m
+                    else:
+                        return None
+            else:
+                return None
