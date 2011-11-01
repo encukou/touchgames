@@ -116,6 +116,8 @@ class Ball(TickingWidget):
         self.touch_uid = None
         self.target_pos = self.pos
 
+        self.animation = None
+
         radius = self.radius = parent.cell_size * 0.3
         self.handle_radius = parent.cell_size * BALL_TOUCH_RADIUS
         self.zoc_radius = self.radius
@@ -241,8 +243,10 @@ class Ball(TickingWidget):
             self.touch_uid = touch.uid
             self.on_touch_move(touch)
             zoc_radius = self.parent.cell_size * BALL_ZOC_RADIUS
-            animation = Animation(zoc_radius=zoc_radius, duration=0.5)
-            animation.start(self)
+            if self.animation:
+                self.animation.stop(self)
+            self.animation = Animation(zoc_radius=zoc_radius, duration=0.5)
+            self.animation.start(self)
             return True
 
     def on_touch_move(self, touch):
@@ -254,9 +258,11 @@ class Ball(TickingWidget):
         if touch.uid == self.touch_uid:
             self.touch_uid = None
             self.target_pos = self.pos
-            animation = Animation(zoc_radius=self.handle_radius,
+            if self.animation:
+                self.animation.stop(self)
+            self.animation = Animation(zoc_radius=self.handle_radius,
                     t='in_cubic', duration=1)
-            animation.start(self)
+            self.animation.start(self)
             return True
 
 class Builder(Widget):
