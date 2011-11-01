@@ -191,7 +191,7 @@ class Ball(TickingWidget):
         pos = numpy.array(self.pos)
         # The distance we want to cover
         delta = self.target_pos - pos
-        distance = numpy.sqrt(sum(delta ** 2))
+        distance = math.sqrt(sum(delta ** 2))
         # Only move a little bit each time, so walls are checked correctly
         max_distance = min(remaining_distance, radius / 2)
         if distance > max_distance:
