@@ -89,7 +89,7 @@ class Logger(Widget):
         touch.x = int(touch.x)
         touch.y = int(touch.y)
         touch_attrs = {}
-        for attr in set(touch.__attrs__) | set(['uid']):
+        for attr in set(touch.__attrs__) | set(['uid']) - set(['ud']):
             print attr, getattr(touch, attr)
             touch_attrs[attr] = getattr(touch, attr)
         self.log(action, touch_attrs)
