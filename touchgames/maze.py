@@ -28,12 +28,12 @@ from touchgames.util import FilledCircle, HollowCircle
 from touchgames.replay import LoggedApp
 
 COUNTDOWN_START = 5
-MAZE_CELL_SIZE = 30
-BALL_SPEED = 10  # tiles per second
+MAZE_CELL_SIZE = 33
+BALL_SPEED = 8  # tiles per second
 BALL_TOUCH_RADIUS = 1.5  # tiles
-BALL_ZOC_RADIUS = 7  # tiles
+BALL_ZOC_RADIUS = 6  # tiles
 MIN_LOOP_AREA = 3  # tiles squared
-NUM_ROUNDS = 2
+NUM_ROUNDS = 1
 
 def yield_groups(source, n):
     """Divide an iterator into tuples of n consecutive elements
