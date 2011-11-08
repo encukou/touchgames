@@ -86,6 +86,7 @@ class Logger(Widget):
         super(Logger, self).on_touch_up(touch)
 
     def log_touch(self, action, touch):
+        touch.ud.clear()
         touch.x = int(touch.x)
         touch.y = int(touch.y)
         touch_attrs = {}
