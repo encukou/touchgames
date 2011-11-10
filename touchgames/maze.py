@@ -292,12 +292,11 @@ class BuildLoop(TickingWidget):
             self.canvas.after.clear()
             self.done += dt * 3
             with self.canvas.after:
-                PopMatrix()
                 if self.build:
                     Color(0, 1, 0, 0.5)
                 else:
                     Color(1, 0, 0, 0.5)
-                if self.parent.parent.current_solver:
+                if self.parent.parent and self.parent.parent.current_solver:
                     Rotate(180)
                 RingSection(0, -min(1, self.done) * self.spin, 1.5, 2)
                 PopMatrix()
@@ -336,16 +335,11 @@ class BuildLoop(TickingWidget):
                 Translate(self.pos[0], self.pos[1], 0)
                 self.scale_instruction = Scale(self.parent.cell_size)
                 self.rscale_instruction = Scale(1)
-                PushMatrix()
                 self.rotate_instruction = Rotate(0, 0, 0, 1)
 
             # A fade-in animation
             animation = Animation(a=0.8, t='out_cubic', duration=0.2)
             animation.start(self.color_instruction)
-
-            # A practically infinite spinning animation
-            animation = Animation(angle=200000 * self.spin, duration=1000)
-            animation.start(self.rotate_instruction)
             return True
 
     def on_touch_move(self, touch):
