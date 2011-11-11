@@ -280,6 +280,7 @@ class BuildLoop(TickingWidget):
                 self.done = 0.99
                 self.die()
         Clock.schedule_once(f)
+        self.active = True
 
     @property
     def int_tile(self):
@@ -300,7 +301,7 @@ class BuildLoop(TickingWidget):
                     Rotate(180)
                 RingSection(0, -min(1, self.done) * self.spin, 1.5, 2)
                 PopMatrix()
-            if self.done > 1:
+            if self.done > 1 and self.active:
                 self.die()
                 x, y = self.pos
                 parent = self.parent
@@ -351,6 +352,7 @@ class BuildLoop(TickingWidget):
 
     def on_touch_up(self, touch):
         if self.touch_uid == touch.uid:
+            self.active = False
             touch.ungrab(self)
             self.die()
             return True
