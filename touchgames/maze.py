@@ -165,9 +165,9 @@ class Ball(TickingWidget):
             # Update the canvas if the ball moved
             self.translation_instruction.xy = self.pos
             self.canvas.ask_update()
-        if self.scale_instruction.scale != self.zoc_radius:
+        if self.scale_instruction.x != self.zoc_radius:
             # Update the canvas if the ZOC was resized
-            self.scale_instruction.scale = self.zoc_radius
+            self.scale_instruction.xyz = [self.zoc_radius] * 3
             self.canvas.ask_update()
         if not self.parent.ball_source.collide_point(*self.pos):
             # If the ball is outside the initial area, add time to the player's
@@ -412,7 +412,9 @@ class BuildLoop(TickingWidget):
                 Point(points=satellites, pointsize=0.2, source='particle2.png')
 
             # A scale-in animation
-            animation = Animation(scale=self.parent.cell_size / 3 * 2,
+            animation = Animation(
+                    x=self.parent.cell_size / 3 * 2,
+                    y=self.parent.cell_size / 3 * 2,
                     t='out_cubic', duration=0.2)
             animation.start(self.scale_instruction)
 
@@ -488,7 +490,9 @@ class BuildLoop(TickingWidget):
         """Ending animation and destruction of the widget
         """
         # Scale-out animation
-        animation = Animation(scale=self.parent.cell_size * 15,
+        animation = Animation(
+                x=self.parent.cell_size * 15,
+                y=self.parent.cell_size * 15,
                 t='in_cubic', duration=0.15)
         animation.start(self.scale_instruction)
 
@@ -1037,7 +1041,7 @@ class MazeGame(Widget):
         animation = Animation(angle=base_angle + 90,
                 t='out_cubic', duration=1)
         animation.start(self.rotate_instruction)
-        animation = Animation(scale=0.01, t='out_cubic', duration=1)
+        animation = Animation(x=0.01, y=0.01, t='out_cubic', duration=1)
         animation.start(self.scale_instruction)
         particle_shower(self.parent, type='win', pos=(
                 self.board.window_width * self.current_solver,
@@ -1063,8 +1067,8 @@ class MazeGame(Widget):
                 animation = Animation(angle=base_angle + 180,
                         t='in_cubic', duration=1)
                 animation.start(self.rotate_instruction)
-                animation = Animation(scale=1, t='in_cubic', duration=1)
-                self.scale_instruction.scale = 0.01
+                animation = Animation(x=1, y=1, t='in_cubic', duration=1)
+                self.scale_instruction.xyz = [0.01] * 3
                 animation.start(self.scale_instruction)
             else:
                 self.set_message(True, '')
