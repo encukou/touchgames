@@ -1033,7 +1033,7 @@ class MazeGame(Widget):
                 )
 
     def win(self):
-        """End one turn and start the next (if it wasn't the last turn
+        """End one turn and start the next (if it wasn't the last turn)
         """
         # Mostly animation code
         base_angle = 180 if self.current_solver else 0
