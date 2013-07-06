@@ -2,3 +2,4 @@
 /*.egg-info/
 /*/*.log
 /log-*.log
+/.buildozer/
