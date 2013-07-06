@@ -1082,8 +1082,12 @@ class MazeGame(Widget):
         """
         touch.push()
         if self.current_solver and self.board and self.board.initialized:
-            touch.x = self.board.window_width - touch.x
-            touch.y = self.board.window_height - touch.y
+            def transform_2d(x, y):
+                return (
+                    self.board.window_width - touch.x,
+                    self.board.window_height - touch.y,
+                )
+            touch.apply_transform_2d(transform_2d)
         rv = func(touch)
         touch.pop()
         return rv
