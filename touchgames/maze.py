@@ -27,13 +27,13 @@ from touchgames.mazesolver import solvemaze
 from touchgames.util import FilledCircle, HollowCircle
 from touchgames.replay import LoggedApp
 
-COUNTDOWN_START = 5
+COUNTDOWN_START = 1
 MAZE_CELL_SIZE = 30
-BALL_SPEED = 10  # tiles per second
+BALL_SPEED = 100  # tiles per second
 BALL_TOUCH_RADIUS = 1.5  # tiles
 BALL_ZOC_RADIUS = 7  # tiles
 MIN_LOOP_AREA = 3  # tiles squared
-NUM_ROUNDS = 2
+NUM_ROUNDS = 1
 
 def yield_groups(source, n):
     """Divide an iterator into tuples of n consecutive elements
@@ -572,16 +572,12 @@ class MazeBoard(TickingWidget):
         self.start_point = self.width - 2, self.height - 2
         self.start_cranny = self.width - 1, self.height - 2
 
-        # `bdist`: same as `matrix` except positive numbers indicate shortest
-        #  distance to the entrance or nearest ball
-        # `dist`: ditto with shortest distance to just the entrance
-        self.bdist = self.dist = self.matrix
-        self.set_walls(self.matrix)
-
         # Initialize the graphic representation
         self.background_canvas = Canvas()
         self.canvas.add(self.background_canvas)
         self.draw()
+
+        self.set_walls(self.matrix)
 
         # Add the ball source (zero-sized initially)
         self.ball_source = BallSource(size=(0, 0),
@@ -669,72 +665,31 @@ class MazeBoard(TickingWidget):
         else:
             self.must_redraw = False
         sys.stdout.flush()
-        self.set_walls(self.matrix)
-        for y in range(self.height):
-            y_coord = y * self.cell_height
-            for x in range(self.width):
-                self.colors[x, y].rgba = self.tile_color(x, y)
         self.background_canvas.ask_update()
-
-    def tile_color(self, x, y):
-        """Get the color for the tile at (x, y)
-        """
-        if self.matrix[x, y] == -4:
-            # Entrance; same color as neighboring tile
-            return self.tile_color(x - 1, y)
-        elif self.matrix[x, y] == -3:
-            # Exit; same color as neighboring tile
-            return self.tile_color(x + 1, y)
-        elif self.matrix[x, y] < 0:
-            # Wall, transparent black
-            if self.darkWalls:
-                return 0, 0, 0, 0
-            else:
-                # (with light walls; white)
-                return 1, 1, 1, 1
-        else:
-            # Corridor; a light color based on distances to the entrance, exit
-            # and nearest ball
-            m = self.matrix[x, y]
-            d = self.dist[x, y]
-            b = self.bdist[x, y]
-            mmax = self.matrix.max() or 1
-            dmax = self.dist.max() or 1
-            bmax = self.bdist.max() or 1
-            r = m / mmax
-            g = 1 - d / dmax
-            b = 1 - min(m, b) / min(mmax, bmax)
-            if self.darkWalls:
-                a = (numpy.array((max(g, b), max(r, b), max(r, g), 0)) ** 8)
-                return 1 - a / 2
-            else:
-                # (with light walls; a dark color)
-                return numpy.array((r, g, b, 1)) ** 8
 
     def set_walls(self, matrix):
         """Set walls and solve the maze. No-op if maze is unsolvable.
 
         `matrix`: A 2D matrix with negative values for walls
         """
-        mstart = numpy.zeros(matrix.shape + (3,), dtype=numpy.int32)
-        mstart[self.start_point + (0,)] = mstart[(1, 1, 1)] = 1
-        mstart[self.start_cranny + (2,)] = 1
-        mstart[self.start_point + (2,)] = 1
-        for ball in self.balls:
-            tile_pos = self.pixel_to_tile(ball.pos)
-            mstart[int(tile_pos[0]), int(tile_pos[1]), 2] = 1
-        corridors = matrix >= 0
-        m = solvemaze(corridors, mstart)
-        if m is None:
-            return False
-        m[self.start_point + (0,)] = m[(1, 1, 1)] = 1
-        self.bdist = m[:, :, 2]
-        self.dist = m[:, :, 1]
-        m = m[:, :, 0]
-        self.matrix = numpy.select([matrix < 0, True], [matrix, m])
-
         # Clear cache of unsuccessful building attempts
         self.build_tries = defaultdict(set)
+
+        mstart = numpy.zeros(matrix.shape, dtype=numpy.int32)
+        corridors = matrix >= 0
+        m = solvemaze(corridors, self.start_point)
+        if not m:
+            return False
+        self.matrix = matrix
+
+        for y in range(self.height):
+            y_coord = y * self.cell_height
+            for x in range(self.width):
+                if -3 < self.matrix[x, y] < 0:
+                    self.colors[x, y].rgba = 0, 0, 0, 0
+                else:
+                    self.colors[x, y].rgba = 1, 1, 1, 1
+
         return True
 
     def set_wall(self, coord, create):
@@ -747,7 +702,7 @@ class MazeBoard(TickingWidget):
         if coord in self.build_tries[create]:
             return False
         self.build_tries[create].add(coord)
-        if coord == self.start_cranny or coord == (2, 1):
+        if coord == self.start_cranny or coord == (1, 1):
             return False
         try:
             current_state = self.matrix[coord]

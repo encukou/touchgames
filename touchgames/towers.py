@@ -18,9 +18,13 @@ from kivy.graphics import (Color, Line, Rectangle, Triangle,
 from kivy.animation import Animation
 from kivy.vector import Vector
 
-from touchgames.mazesolver import solvemaze
 from touchgames.util import FilledCircle, HollowCircle
 from touchgames.replay import LoggedApp
+
+
+import pyximport
+pyximport.install()
+from fastsolver import solvemaze
 
 # Tunable values:
 CRITTER_SPEED = 4  # tiles per second
@@ -977,18 +981,6 @@ class TowersGame(Widget):
                     int(y) // self.cell_height]
         except IndexError:
             return -3
-
-class TowersApp(App):
-    """The Kivy app for the towers game
-    """
-    def __init__(self, replay=None):
-        super(TowersApp, self).__init__()
-
-    def build(self):
-        parent = Logger()
-        parent.add_widget(TowersGame())
-
-        return parent
 
 if __name__ == '__main__':
     # re-importing this file so the classes are pickle-able
