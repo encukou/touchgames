@@ -51,7 +51,7 @@ class Logger(Widget):
         super(Logger, self).__init__(**kwargs)
         Clock.schedule_once(self.tick)
 
-        log_filename = 'log-%s.log' % datetime.now().isoformat()
+        log_filename = 'log-%s.log' % datetime.now().isoformat().replace(':', '_')
         self._fileobj = fileobj = open(log_filename, 'wb')
         self.stream = gzip.GzipFile(fileobj=fileobj)
         self.log('random', random.getstate())
