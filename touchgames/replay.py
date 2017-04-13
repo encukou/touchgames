@@ -3,7 +3,10 @@
 
 from __future__ import division
 
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 import sys
 from datetime import datetime
 import gzip
@@ -202,7 +205,7 @@ class Replay(App):
         self.content_widget.dispatch(event, touch)
 
     def handle_window_size(self, width, height):
-        print width, height
+        print(width, height)
         children_to_do = set([self.content_widget])
         children_done = set()
         while children_to_do:
@@ -263,6 +266,6 @@ class SpeedAdjuster(Widget):
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print "Usage: %s <logfile>" % sys.argv[0]
+        print("Usage: %s <logfile>" % sys.argv[0])
     else:
         Replay(sys.argv[1]).run()

@@ -40,7 +40,7 @@ def yield_groups(source, n):
 
     For example, with n=2: 1, 2, 3, 4, 5, 6 -> (1, 2), (3, 4), (5, 6)
     """
-    return itertools.izip(*[iter(source)] * n)
+    return zip(*[iter(source)] * n)
 
 class BallSource(Widget):
     """The quarter-circle in the corner that balls are spawned from
@@ -934,16 +934,17 @@ class MazeGame(Widget):
                     text = ''
                 else:
                     text = 'Turn {0}/{1}'.format(turn_number, num_turns)
-                l = Label(text=text,
-                        pos=(0, 0), size=(self.board.window_width, cell_size),
-                        fontsize=cell_size)
+                l = Label() #text=text,
+                        #pos=(0, 0), size=(self.board.window_width, cell_size),
+                        #fontsize=cell_size)
                 # Clocks
                 for player in range(2):
                     Color(1, 1, 1, 1)
-                    l = Label(text=time_format(self.times[player]),
-                            fontsize=cell_size)
+                    l = Label() #text=time_format(self.times[player]),
+                            #fontsize=cell_size)
                     l.texture_update()
-                    l.width = l.texture.width
+                    print(dir(l.texture))
+                    #l.width = l.texture.width
                     if player ^ edge:
                         l.pos = cell_size, 0
                     else:
@@ -961,16 +962,16 @@ class MazeGame(Widget):
                     color = (0.7, 0.7, 0, 1)
                 else:
                     color = (0, 0.5, 1, 1)
-                l = Label(text=self.messages[edge],
-                        pos=(
-                                -self.board.window_height / 2,
-                                -self.board.window_width / 2,
-                            ),
-                        size=(self.board.window_height, cell_size),
-                        bold=True,
-                        fontsize=cell_size,
-                        color=color,
-                    )
+                l = Label#(text=self.messages[edge],
+                #        pos=(
+                #                -self.board.window_height / 2,
+                #                -self.board.window_width / 2,
+                #            ),
+                #        size=(self.board.window_height, cell_size),
+                #       bold=True,
+                #        fontsize=cell_size,
+                #        color=color,
+                #    )
                 self.side_labels[edge] = l
                 if edge == 1:
                     break
@@ -1253,7 +1254,7 @@ def calculate_points(x1, y1, x2, y2, spacing=5):
         return ()
     o = []
     m = dist / spacing
-    for i in xrange(1, int(m)):
+    for i in range(1, int(m)):
         mi = i / m
         lastx = x1 + dx * mi
         lasty = y1 + dy * mi
