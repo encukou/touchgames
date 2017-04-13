@@ -57,11 +57,11 @@ def roundrobin(*iterables):
     "roundrobin('ABC', 'D', 'EF') --> A D E B F C"
     # Recipe credited to George Sakkis
     pending = len(iterables)
-    nexts = itertools.cycle(iter(it).next for it in iterables)
+    nexts = itertools.cycle((lambda: next(iter(it))) for it in iterables)
     while pending:
         try:
-            for next in nexts:
-                yield next()
+            for next_ in nexts:
+                yield next_()
         except StopIteration:
             pending -= 1
             nexts = itertools.cycle(itertools.islice(nexts, pending))
@@ -356,8 +356,8 @@ class Tower(Widget):
     def area(self):
         """Matrix slice index for the area this tower occupies
         """
-        return (slice(self.coord[0], self.coord[0] + 3),
-                slice(self.coord[1], self.coord[1] + 3))
+        return (slice(int(self.coord[0]), int(self.coord[0]) + 3),
+                slice(int(self.coord[1]), int(self.coord[1]) + 3))
 
     @property
     def zoc_area(self):
@@ -365,8 +365,8 @@ class Tower(Widget):
 
         Critters are deterred, but not prevented, from entering this region
         """
-        return (slice(self.coord[0] - 1, self.coord[0] + 4),
-                slice(self.coord[1] - 1, self.coord[1] + 4))
+        return (slice(int(self.coord[0]) - 1, int(self.coord[0]) + 4),
+                slice(int(self.coord[1]) - 1, int(self.coord[1]) + 4))
 
     def draw(self):
         """Draw the tower turret/markings/menu
@@ -686,8 +686,8 @@ class TowersGame(Widget):
         # -2: center wall
         # -3: tower
         self.matrix = numpy.zeros((
-                    even(self.window_width // TOWER_PIXEL_SIZE) * TOWER_SIZE,
-                    (self.window_height // TOWER_PIXEL_SIZE) * TOWER_SIZE,
+                    even(int(self.window_width) // TOWER_PIXEL_SIZE) * TOWER_SIZE,
+                    (int(self.window_height) // TOWER_PIXEL_SIZE) * TOWER_SIZE,
                 ), dtype=numpy.int8,
             )
         # `costs`: Movement cost for critters for each tile
@@ -709,7 +709,7 @@ class TowersGame(Widget):
         release_point = random.uniform(0, self.window_height)
         for direction in (0, pi):
             self.add_widget(Critter(
-                    pos=(self.window_width // 2, release_point),
+                    pos=(int(self.window_width) // 2, release_point),
                     direction=direction,
                     hp=self.critter_hp,
                 ))
@@ -729,8 +729,8 @@ class TowersGame(Widget):
         """
         self.matrix[:TOWER_SIZE, :] = -1
         self.matrix[-TOWER_SIZE:, :] = -1
-        self.matrix[self.width // 2 - TOWER_SIZE + 1:
-                self.width // 2 + TOWER_SIZE - 1, :] = -2
+        self.matrix[int(self.width) // 2 - TOWER_SIZE + 1:
+                int(self.width) // 2 + TOWER_SIZE - 1, :] = -2
 
     def draw(self):
         """Draw the game board
@@ -782,11 +782,11 @@ class TowersGame(Widget):
             Rotate(90, 0, 0, 1)
             for side in reversed(range(2)):
                 if not side:
-                    Translate(self.window_height // 2,
-                            self.window_width // 2, 0)
+                    Translate(int(self.window_height) // 2,
+                            int(self.window_width) // 2, 0)
                     Rotate(180, 0, 0, 1)
-                    Translate(-self.window_height // 2,
-                            -self.window_width // 2, 0)
+                    Translate(int(-self.window_height) // 2,
+                            int(-self.window_width) // 2, 0)
                 Color(0, 0, 0)
                 label = Label(text=u"€ %s" % int(round(self.funds[side])),
                         pos=(self.cell_size, 0),#(self.window_width - self.cell_size * 4) / 2),
@@ -852,8 +852,9 @@ class TowersGame(Widget):
         # (very short means a debt equal to the HP of critters that are
         # currently being sent out — i.e. an increasing number)
         while self.funds[side] < -self.critter_hp:
-            towers = [((abs(t.pos[0] - self.window_width / 2), t.level), t)
-                    for t in self.towers if t.side == side and t.level]
+            towers = [((abs(t.pos[0] - self.window_width / 2), t.level), i, t)
+                    for i, t in enumerate(self.towers)
+                    if t.side == side and t.level]
             if towers:
                 score, victim = min(towers)
                 victim.sell()
@@ -868,9 +869,9 @@ class TowersGame(Widget):
     def on_touch_down(self, touch):
         """Either make a new tower, or display menu for an existing one
         """
-        tower_coord = (touch.x // self.cell_width // TOWER_SIZE * TOWER_SIZE,
-                touch.y // self.cell_height // TOWER_SIZE * TOWER_SIZE)
-        matrix_coord = tower_coord[0] + 1, tower_coord[1] + 1
+        tower_coord = (int(touch.x) // self.cell_width // TOWER_SIZE * TOWER_SIZE,
+                int(touch.y) // self.cell_height // TOWER_SIZE * TOWER_SIZE)
+        matrix_coord = int(tower_coord[0]) + 1, int(tower_coord[1]) + 1
         if self.matrix[matrix_coord] < 0:
             # On tower?
             for tower in self.towers:
@@ -889,8 +890,8 @@ class TowersGame(Widget):
                         self.cell_height * TOWER_SIZE)
                 tower = Tower(
                         pos=(
-                                touch.x // size[0] * size[0],
-                                touch.y // size[1] * size[1]),
+                                int(touch.x) // size[0] * size[0],
+                                int(touch.y) // size[1] * size[1]),
                         size=size,
                         side=side
                     )
